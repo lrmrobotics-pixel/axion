@@ -302,11 +302,11 @@ const Updater = {
       this.native = (await ota.current()).native; this.ota = ota;
     } catch { this.ota = null; } // APK sin el plugin (versiones ≤ 1.1.1)
   },
-  async check(manual = false) {
+  async check(manual = false, cold = false) {
     if (!this.isApp() && !manual) return;
     const last = +lsGet('axion.updcheck') || 0;
     // automático: al abrir y al volver a la app, como mucho cada 20 min; manual: siempre
-    if (!manual && (Date.now() - last < 20 * 60e3 || $('.upd-offer'))) return;
+    if (!manual && ($('.upd-offer') || (!cold && Date.now() - last < 20 * 60e3))) return; // al abrir desde cero busca siempre
     try {
       const r = await fetch(`https://api.github.com/repos/${UPDATE_REPO}/releases/latest`, { headers: { Accept: 'application/vnd.github+json' } });
       if (!r.ok) throw new Error(r.status);
@@ -374,7 +374,7 @@ document.addEventListener('pointerdown', () => { if (S().settings.music && !Musi
 
 /* ---------- arranque ---------- */
 Store.load(); Theme.apply(); Mascot.render(); Missions.ensure(); Router.go();
-Updater.init().then(() => setTimeout(() => Updater.check(), 2000));
+Updater.init().then(() => setTimeout(() => Updater.check(false, true), 2000));
 // Tuerca te saluda al abrir la app con un resumen del día
 const greetBriefing = () => {
   if (!S().onboarded || location.hash.startsWith('#/play')) return;
