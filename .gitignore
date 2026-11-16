@@ -1,0 +1,15 @@
+node_modules/
+www/
+*.apk
+android/local.properties
+android/.gradle/
+android/build/
+android/app/build/
+android/capacitor-cordova-android-plugins/build/
+android/.idea/
+android/app/src/main/assets/public/
+.claude/settings.local.json
+deep-research-report.md
+android/keystore.properties
+*.jks
+*.keystore

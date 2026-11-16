@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Ícono adaptable de AXIÓN: Tuerca, el robot -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp" android:height="108dp"
+    android:viewportWidth="108" android:viewportHeight="108">
+    <group android:scaleX="0.17" android:scaleY="0.17" android:translateX="10.48" android:translateY="16.6">
+        <path android:fillColor="#1A1830" android:pathData="M247,96 H265 V150 H247 Z"/>
+        <path android:fillColor="#FFC53D" android:pathData="M230,86 A26,26 0 1,1 282,86 A26,26 0 1,1 230,86 Z"/>
+        <path android:fillColor="#1A1830" android:pathData="M196,150 H316 A80,80 0 0,1 396,230 V300 A80,80 0 0,1 316,380 H196 A80,80 0 0,1 116,300 V230 A80,80 0 0,1 196,150 Z"/>
+        <path android:strokeColor="#7DFFD8" android:strokeWidth="20" android:strokeLineCap="round" android:pathData="M176,258 Q206,214 236,258"/>
+        <path android:strokeColor="#7DFFD8" android:strokeWidth="20" android:strokeLineCap="round" android:pathData="M276,258 Q306,214 336,258"/>
+        <path android:fillColor="#7DFFD8" android:pathData="M210,300 Q256,350 302,300 Z"/>
+    </group>
+</vector>

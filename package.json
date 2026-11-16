@@ -1,0 +1,20 @@
+{
+  "name": "axion",
+  "version": "1.0.0",
+  "description": "AXIÓN: minijuegos diarios de matemáticas, física, electrónica, programación y mecánica.",
+  "private": true,
+  "scripts": {
+    "serve": "python -m http.server 5173",
+    "build:web": "node scripts/build-web.js",
+    "sync": "npm run build:web && npx cap sync android",
+    "apk": "npm run sync && cd android && gradlew.bat assembleDebug",
+    "release": "node scripts/release.js"
+  },
+  "dependencies": {
+    "@capacitor/android": "^7.6.10",
+    "@capacitor/core": "^7.6.10"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "^7.6.10"
+  }
+}

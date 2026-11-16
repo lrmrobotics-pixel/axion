@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>AXIÓN · Entrena tu mente ingeniera</title>
+<meta name="description" content="AXIÓN: minijuegos diarios de matemáticas, física, electrónica, programación y mecánica.">
+<meta name="theme-color" content="#7c5cff">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icon.svg">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;700;800&family=Nunito:wght@500;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<a class="skip" href="#main">Saltar al contenido</a>
+<header id="topbar" class="topbar" hidden>
+  <button class="brand" data-go="#/" aria-label="AXIÓN, ir a inicio">
+    <span class="brand-mark" aria-hidden="true">⚡</span><span class="brand-name">AXIÓN</span>
+  </button>
+  <div class="hud">
+    <span class="pill" id="hud-streak" title="Racha de días">🔥 <b>0</b></span>
+    <span class="pill" id="hud-coins" title="Tornillos (monedas)">🔩 <b>0</b></span>
+    <span class="pill lvl" id="hud-level" title="Nivel">Nv <b>1</b></span>
+  </div>
+</header>
+
+<main id="main" tabindex="-1"></main>
+
+<nav id="tabbar" class="tabbar" hidden aria-label="Navegación principal">
+  <button data-go="#/" data-tab="home"><span aria-hidden="true">🏠</span>Inicio</button>
+  <button data-go="#/learn" data-tab="learn"><span aria-hidden="true">🗺️</span>Aprender</button>
+  <button data-go="#/shop" data-tab="shop"><span aria-hidden="true">🛒</span>Tienda</button>
+  <button data-go="#/profile" data-tab="profile"><span aria-hidden="true">🤖</span>Perfil</button>
+  <button data-go="#/settings" data-tab="settings"><span aria-hidden="true">⚙️</span>Ajustes</button>
+</nav>
+
+<div id="mascot" class="mascot" aria-live="polite">
+  <div class="bubble" id="bubble" hidden></div>
+  <button class="mascot-btn" id="mascot-btn" aria-label="Tuerca, tu robot asistente. Toca para un consejo"></button>
+</div>
+
+<div id="toasts" class="toasts" aria-live="polite"></div>
+<canvas id="confetti" aria-hidden="true"></canvas>
+
+<script src="js/core.js"></script>
+<script src="js/games-math.js"></script>
+<script src="js/games-lab.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>
