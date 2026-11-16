@@ -4,5 +4,18 @@
   "webDir": "www",
   "android": {
     "backgroundColor": "#11101b"
+  },
+  "plugins": {
+    "CapacitorUpdater": {
+      "autoUpdate": false,
+      "statsUrl": "",
+      "updateUrl": "",
+      "channelUrl": "",
+      "resetWhenUpdate": true,
+      "autoDeleteFailed": true,
+      "autoDeletePrevious": true,
+      "appReadyTimeout": 10000,
+      "shakeMenu": false
+    }
   }
 }

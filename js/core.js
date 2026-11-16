@@ -4,7 +4,7 @@
 'use strict';
 
 /* Versión de la app: la actualiza scripts/release.js */
-const APP_VERSION = '1.1.1';
+const APP_VERSION = '1.2.1';
 const UPDATE_REPO = 'lrmrobotics-pixel/axion-releases';
 
 /* ---------- utilidades ---------- */
@@ -33,9 +33,9 @@ const DEFAULT_STATE = () => ({
   created: Date.now(), name: '', onboarded: false,
   xp: 0, coins: 50, streak: 0, bestStreak: 0, lastDay: null, freezes: 0,
   totalCorrect: 0, totalAnswered: 0, sessions: 0, perfects: 0,
-  settings: { accent: '#7c5cff', mode: 'auto', sound: true, music: false, haptics: true, tts: false, fontScale: 1, motion: 'auto' },
+  settings: { accent: '#7c5cff', mode: 'auto', sound: true, music: false, haptics: true, tts: true, voicePersona: 'sereno', voiceName: '', voiceRate: 1, voiceChatty: true, fontScale: 1, motion: 'auto' },
   mascot: { color: '#7c5cff', owned: ['c-morado'], head: null, face: null, neck: null },
-  modules: {}, badges: [], history: {}, mission: null, bestRelampago: 0, subjectsPlayed: [],
+  modules: {}, lessons: {}, badges: [], history: {}, mission: null, bestRelampago: 0, subjectsPlayed: [],
 });
 const Store = {
   s: null,
@@ -46,6 +46,7 @@ const Store = {
     this.s = Object.assign(d, raw || {});
     this.s.settings = Object.assign(DEFAULT_STATE().settings, (raw && raw.settings) || {});
     this.s.mascot = Object.assign(DEFAULT_STATE().mascot, (raw && raw.mascot) || {});
+    if (!this.s.voiceV) { this.s.settings.tts = true; this.s.voiceV = 1; } // v1.2: la voz de asistente viene activada
     return this.s;
   },
   save() { try { localStorage.setItem(KEY, JSON.stringify(this.s)); } catch { /* almacenamiento no disponible */ } },
@@ -182,17 +183,81 @@ const Music = {
   },
 };
 const buzz = (p = 15) => { if (S().settings.haptics && navigator.vibrate) { try { navigator.vibrate(p); } catch {} } };
+/* ---------- voz de Tuerca: asistente de IA ----------
+   En el APK usa el motor de voz nativo de Android (plugin TextToSpeech); en el navegador, Web Speech.
+   Personalidades: tono y velocidad sobre la voz en español que elijas del dispositivo. */
+const VOICE_PERSONAS = {
+  sereno: { name: 'Sereno', desc: 'Grave y elegante, estilo mayordomo IA', pitch: .82, rate: .96, prefer: /male|hombre|masc|jorge|diego|pablo|enrique|carlos|juan|alvaro|-esd|-ese|#male/i },
+  agil: { name: 'Ágil', desc: 'Clara y rápida, estilo copiloto IA', pitch: 1.06, rate: 1.06, prefer: /female|mujer|fem|helena|laura|monica|paulina|sabina|elvira|dalia|-eea|-eee|#female/i },
+  clasico: { name: 'Robot clásico', desc: 'Agudo y simpático', pitch: 1.45, rate: 1.08, prefer: null },
+};
+const SPEAK_FIX = [
+  [/d\/dx/g, ' la derivada de '], [/×|·/g, ' por '], [/÷/g, ' entre '], [/−/g, ' menos '], [/²/g, ' al cuadrado'], [/³/g, ' al cubo'], [/√/g, ' raíz de '],
+  [/π/g, ' pi '], [/θ/g, ' theta '], [/ω/g, ' omega '], [/°/g, ' grados'], [/Ω/g, ' ohmios'], [/≈/g, ' aproximadamente '],
+  [/≤/g, ' menor o igual que '], [/≥/g, ' mayor o igual que '], [/</g, ' menor que '], [/>/g, ' mayor que '], [/=/g, ' igual a '],
+  [/%/g, ' por ciento'], [/(\d)\/(\d)/g, '$1 sobre $2'], [/\bf'\(/g, 'f prima de ('], [/\bmA\b/g, ' miliamperios'], [/\bkΩ\b/g, ' kilo ohmios'],
+  [/\brpm\b/g, ' revoluciones por minuto'], [/\bm\/s\b/g, ' metros por segundo'], [/\bXP\b/g, ' puntos de experiencia'], [/¬/g, ' no '],
+];
 const Voice = {
-  speak(text) {
-    if (!S().settings.tts || !('speechSynthesis' in window)) return;
+  native: null, voices: [], ready: null, last: 0,
+  init() {
+    if (this.ready) return this.ready;
+    this.ready = (async () => {
+      try {
+        const C = window.Capacitor;
+        if (C && C.isNativePlatform && C.isNativePlatform() && C.registerPlugin) {
+          this.native = C.registerPlugin('TextToSpeech');
+          this.voices = ((await this.native.getSupportedVoices()).voices || []).map((v, i) => ({ ...v, i }));
+          return;
+        }
+      } catch { this.native = null; }
+      if ('speechSynthesis' in window) {
+        const load = () => (this.voices = speechSynthesis.getVoices().map((v, i) => ({ name: v.name, lang: v.lang, voiceURI: v.voiceURI, i, ref: v })));
+        load(); if (!this.voices.length) await new Promise((r) => { speechSynthesis.onvoiceschanged = () => { load(); r(); }; setTimeout(r, 1500); });
+      }
+    })();
+    return this.ready;
+  },
+  spanish() { const es = this.voices.filter((v) => /^es/i.test(v.lang)); return es.length ? es : this.voices; },
+  pickVoice() {
+    const st = S().settings, list = this.spanish(); if (!list.length) return null;
+    const chosen = list.find((v) => (v.voiceURI || v.name) === st.voiceName); if (chosen) return chosen;
+    const P = VOICE_PERSONAS[st.voicePersona] || VOICE_PERSONAS.sereno;
+    const local = list.filter((v) => /es[-_](CO|MX|US|419)/i.test(v.lang));
+    return (P.prefer && (local.find((v) => P.prefer.test(v.name + ' ' + (v.voiceURI || ''))) || list.find((v) => P.prefer.test(v.name + ' ' + (v.voiceURI || ''))))) || local[0] || list[0];
+  },
+  clean(text) {
+    let t = String(text).replace(/<[^>]+>/g, ' ');
+    SPEAK_FIX.forEach(([re, r]) => (t = t.replace(re, r)));
+    return t.replace(/[^\p{L}\p{N}\s.,;:¡!¿?()+\-]/gu, ' ').replace(/\s+/g, ' ').trim();
+  },
+  // important: las frases clave suenan aunque el modo conversación esté en "solo lo importante"
+  async speak(text, { important = true } = {}) {
+    const st = S().settings; if (!st.tts || !text) return;
+    if (!important && !st.voiceChatty) return;
+    await this.init();
+    const P = VOICE_PERSONAS[st.voicePersona] || VOICE_PERSONAS.sereno, v = this.pickVoice(), say = this.clean(text);
+    const rate = P.rate * (st.voiceRate || 1); this.last = Date.now();
     try {
-      speechSynthesis.cancel();
-      const u = new SpeechSynthesisUtterance(text.replace(/[^\p{L}\p{N}\s.,;:¡!¿?()=+−\-×÷%°/]/gu, ''));
-      u.lang = 'es-ES'; u.rate = 1.05; u.pitch = 1.25;
-      const v = speechSynthesis.getVoices().find((x) => x.lang.startsWith('es')); if (v) u.voice = v;
-      speechSynthesis.speak(u);
+      if (this.native) await this.native.speak({ text: say, lang: (v && v.lang) || 'es-ES', rate, pitch: P.pitch, volume: 1, voice: v ? v.i : undefined, queueStrategy: 0, category: 'ambient' });
+      else if ('speechSynthesis' in window) {
+        speechSynthesis.cancel(); const u = new SpeechSynthesisUtterance(say);
+        u.lang = (v && v.lang) || 'es-ES'; u.rate = rate; u.pitch = P.pitch; if (v && v.ref) u.voice = v.ref; speechSynthesis.speak(u);
+      }
     } catch {}
   },
+  stop() { try { if (this.native) this.native.stop(); else if ('speechSynthesis' in window) speechSynthesis.cancel(); } catch {} },
+};
+
+/* Frases de Tuerca como asistente que te acompaña */
+const COMPANION = {
+  greet: (n, extra) => pick([`Bienvenido de vuelta, ${n}. Sistemas en línea.`, `Hola, ${n}. Todo listo para entrenar.`, `${n}, qué gusto verte. Laboratorio preparado.`]) + (extra ? ' ' + extra : ''),
+  start: (g, d) => pick([`Iniciando ${g}. Nivel ${d}. Cuando quieras.`, `Cargando ${g}, dificultad ${d}. Vamos allá.`, `${g} en marcha. Nivel ${d}. Confío en ti.`]),
+  ok: () => pick(['Correcto.', 'Impecable.', 'Cálculo verificado.', 'Exacto.', 'Excelente precisión.', 'Bien hecho.', 'Así se hace.']),
+  combo: (n) => pick([`Racha de ${n}. Rendimiento excepcional.`, `${n} seguidas. Estás en modo turbo.`, `Combo de ${n}. Impresionante.`]),
+  up: (d) => pick([`Subiendo la dificultad a nivel ${d}. Lo estás haciendo muy bien.`, `Nivel ${d}. Veamos de qué eres capaz.`]),
+  down: () => 'Bajo un poco la dificultad para que afiances la base.',
+  end: (n, c, t, stars) => (stars === 3 ? `Sesión perfecta, ${n}. ${c} de ${t}. Brillante.` : stars === 2 ? `Sesión completada. ${c} de ${t} correctas. Muy buen trabajo, ${n}.` : stars === 1 ? `Sesión completada con ${c} de ${t}. Lo repasaremos pronto para afianzarlo.` : `Sesión terminada. Cada intento te hace más fuerte, ${n}. Volveremos a este tema pronto.`),
 };
 
 /* ---------- mascota: Tuerca ---------- */
@@ -278,7 +343,7 @@ const Mascot = {
     bub.textContent = text; bub.hidden = false; bub.style.animation = 'none'; void bub.offsetWidth; bub.style.animation = '';
     this.react(mood, mood === 'happy' ? 'jump' : 'wiggle');
     clearTimeout(this.timer); this.timer = setTimeout(() => { bub.hidden = true; }, ms);
-    if (speak) Voice.speak(text);
+    if (speak) Voice.speak(text, { important: speak !== 'chat' });
   },
   hide() { const bub = $('#bubble'); if (bub) bub.hidden = true; },
 };
@@ -388,6 +453,8 @@ const MISSION_TEMPLATES = [
   (r) => ({ type: 'stars3', n: 1, label: 'Consigue ⭐⭐⭐ en una sesión' }),
   (r) => ({ type: 'review', n: 1, label: 'Haz 1 repaso pendiente o juega algo nuevo' }),
   (r) => ({ type: 'combo', n: 5, label: 'Logra un combo de 5 aciertos seguidos' }),
+  (r) => ({ type: 'lesson', n: 1, label: 'Completa 1 lección de la Academia 📚' }),
+  (r) => ({ type: 'lesson', n: 1, label: 'Aprende algo nuevo: 1 lección de la Academia' }),
 ];
 const Missions = {
   ensure() {
@@ -405,11 +472,12 @@ const Missions = {
     const m = this.ensure();
     m.items.forEach((it) => {
       if (it.p >= it.n) return;
-      if (it.type === 'sessions') it.p += 1;
+      if (it.type === 'lesson' && ev.lesson) it.p += 1;
+      if (it.type === 'sessions' && !ev.lesson) it.p += 1;
       if (it.type === 'correct') it.p += ev.correct;
       if (it.type === 'subject' && ev.subj === it.subj) it.p += 1;
       if (it.type === 'stars3' && ev.stars === 3) it.p += 1;
-      if (it.type === 'review' && (ev.wasDue || ev.wasNew)) it.p += 1;
+      if (it.type === 'review' && (ev.wasDue || ev.wasNew || ev.lesson)) it.p += 1;
       if (it.type === 'combo' && ev.bestCombo >= it.n) it.p = it.n;
       it.p = Math.min(it.p, it.n);
     });
@@ -437,6 +505,8 @@ const BADGES = [
   { id: 'lvl10', e: '🤖', name: 'Androide', desc: 'Llega al nivel 10', test: (s) => levelOf(s.xp) >= 10 },
   { id: 'speed', e: '⚡', name: 'Relámpago', desc: '25 aciertos en Cálculo Relámpago', test: (s) => s.bestRelampago >= 25 },
   { id: 'master', e: '🎓', name: 'Maestría', desc: 'Un módulo al 90% de dominio', test: (s) => Object.values(s.modules).some((m) => m.mastery >= 90) },
+  { id: 'lesson1', e: '📖', name: 'Estudiante', desc: 'Completa tu primera lección', test: (s) => Object.keys(s.lessons || {}).length >= 1 },
+  { id: 'lesson10', e: '🎓', name: 'Erudito', desc: 'Completa 10 lecciones', test: (s) => Object.keys(s.lessons || {}).length >= 10 },
   { id: 'shop3', e: '🛍️', name: 'Coleccionista', desc: 'Compra 3 objetos', test: (s) => s.mascot.owned.length >= 4 },
 ];
 function checkBadges() {

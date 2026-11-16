@@ -66,6 +66,7 @@ const Screens = {
         <p style="margin:0 0 6px;font-weight:800">Nivel ${lvl} · ${titleOf(lvl)}</p>
         <div class="xpbar" role="progressbar" aria-valuenow="${pct}" aria-valuemin="0" aria-valuemax="100" aria-label="Progreso de nivel"><i style="width:${pct}%"></i></div>
         <p class="muted" style="margin:4px 0 0;font-size:.8rem;font-weight:700">${s.xp - xpFor(lvl)} / ${xpFor(lvl + 1) - xpFor(lvl)} XP para el nivel ${lvl + 1}</p></div></section>
+      ${(() => { const nl = Learn.next(), dn = LESSONS.filter((l) => Learn.rec(l.id)).length; return `<section class="card"><div class="row"><span style="font-size:2rem">📚</span><div class="grow"><b>Academia · ${dn}/${LESSONS.length} lecciones</b><p class="muted" style="margin:0">${nl ? `Siguiente: ${nl.icon} ${esc(nl.title)}` : '¡Todas completadas! Repasa en tu cuaderno.'}</p></div></div><div class="row" style="margin-top:10px">${nl ? `<button class="btn grow" data-go="#/lesson/${nl.id}">▶ Aprender</button>` : ''}<button class="btn ghost sm" data-go="#/pizarra">✍️ Pizarra</button><button class="btn ghost sm" data-go="#/notebook">📒 Cuaderno</button></div></section>`; })()}
       <section class="card mission"><div class="row"><h2 style="margin:0">🎯 Misión del día</h2><span class="grow"></span><span style="font-weight:800">+60 🔩 +40 XP</span></div>
         ${m.items.map((it) => `<div class="mission-item ${it.p >= it.n ? 'done' : ''}"><span class="chk">${it.p >= it.n ? '✓' : ''}</span>${esc(it.label)}<span class="prog">${it.p}/${it.n}</span></div>`).join('')}
         ${m.claimed ? '<p style="margin:8px 0 0;font-weight:800">✅ ¡Completada! Vuelve mañana por otra.</p>' : Missions.allDone() ? '<button class="btn block" id="claim">🎁 Reclamar recompensa</button>' : `<button class="btn block" data-play="${rec.id}">▶ Empezar misión: ${rec.icon} ${rec.name}</button>`}</section>
@@ -80,7 +81,7 @@ const Screens = {
 
   learn() {
     chrome(true, 'learn');
-    $('#main').innerHTML = `<h1>🗺️ Ruta de aprendizaje</h1><p class="muted">Todo está desbloqueado: sigue la ruta sugerida o explora libremente.</p>
+    $('#main').innerHTML = `<h1>🎮 Juegos</h1><p class="muted">Todo está desbloqueado: sigue la ruta sugerida o explora libremente.</p>
       ${Object.entries(SUBJECTS).map(([k, v]) => `<h2 style="margin-top:18px">${v.icon} ${v.name}</h2>${GAMES.filter((g) => g.subj === k).map(modCard).join('')}`).join('')}`;
   },
 
@@ -109,7 +110,7 @@ const Screens = {
     const days = Array.from({ length: 7 }, (_, i) => { const dt = new Date(Date.now() - (6 - i) * DAY); return { l: 'DLMMJVS'[dt.getDay()], v: s.history[dayKey(dt)] || 0 }; }); const mx = Math.max(20, ...days.map((d) => d.v));
     const acc = s.totalAnswered ? Math.round(s.totalCorrect / s.totalAnswered * 100) : 0;
     $('#main').innerHTML = `<section class="card center"><div style="width:150px;margin:0 auto">${mascotSVG('happy')}</div><h1>${esc(s.name)}</h1><p style="font-weight:800">Nivel ${lvl} · ${titleOf(lvl)}</p>
-        <div class="row" style="justify-content:center"><button class="btn sm ghost" data-go="#/shop">🎨 Personalizar a Tuerca</button><button class="btn sm ghost" id="rename">✏️ Cambiar apodo</button></div></section>
+        <div class="row" style="justify-content:center"><button class="btn sm ghost" data-go="#/shop">🎨 Personalizar a Tuerca</button><button class="btn sm ghost" id="rename">✏️ Cambiar apodo</button><button class="btn sm ghost" data-go="#/settings">⚙️ Ajustes</button></div></section>
       <section class="card"><h3>Estadísticas</h3><div class="stats">
         <div class="stat"><b>${s.xp}</b><span>XP total</span></div><div class="stat"><b>${Progress.streakNow()} 🔥</b><span>Racha actual</span></div>
         <div class="stat"><b>${s.bestStreak}</b><span>Mejor racha</span></div><div class="stat"><b>${s.sessions}</b><span>Sesiones</span></div>
@@ -133,7 +134,14 @@ const Screens = {
         <div class="set-row"><div><label for="set-motion">Reducir animaciones</label></div><span class="switch"><input type="checkbox" id="set-motion" ${st.motion === 'reduce' ? 'checked' : ''}><i></i></span></div></section>
       <section class="card"><h3>Sonido y accesibilidad</h3>
         ${sw('sound', 'Efectos de sonido', 'Correcto, error, monedas')}${sw('music', 'Música ambiental', 'Melodía suave generada en vivo')}
-        ${sw('haptics', 'Vibración', 'Respuesta háptica en el celular')}${sw('tts', 'Voz de Tuerca', 'Lee en voz alta los mensajes')}</section>
+        ${sw('haptics', 'Vibración', 'Respuesta háptica en el celular')}</section>
+      <section class="card"><h3>🎙️ Voz de Tuerca</h3>
+        ${sw('tts', 'Tuerca habla', 'Te acompaña en voz alta en cada sesión')}
+        ${sw('voiceChatty', 'Modo conversación', 'También comenta aciertos y combos (si no, solo lo importante)')}
+        <div class="set-row" style="display:block"><label>Personalidad</label><div class="seg" role="group" aria-label="Personalidad de voz" style="margin-top:8px">${Object.entries(VOICE_PERSONAS).map(([k, v]) => `<button data-persona="${k}" aria-pressed="${st.voicePersona === k}">${v.name}</button>`).join('')}</div><small class="muted" id="persona-desc" style="display:block;margin-top:6px">${(VOICE_PERSONAS[st.voicePersona] || VOICE_PERSONAS.sereno).desc}</small></div>
+        <div class="set-row"><div><label for="set-voice">Voz del dispositivo</label><small>Las voces dependen de tu celular</small></div><select id="set-voice" style="max-width:180px;min-height:44px;border-radius:12px;border:2px solid var(--line);background:var(--surface2);color:var(--ink);font:inherit"><option value="">Automática</option></select></div>
+        <div class="set-row"><div><label for="set-vrate">Velocidad</label><small id="vrate-l">${Math.round(st.voiceRate * 100)}%</small></div><input type="range" id="set-vrate" min=".7" max="1.4" step=".05" value="${st.voiceRate}" style="max-width:180px"></div>
+        <button class="btn ghost sm" id="voice-test">▶ Probar voz</button></section>
       <section class="card"><h3>Datos y privacidad</h3><p class="muted">Todo tu progreso se guarda solo en este dispositivo. No recopilamos datos personales.</p>
         <div class="row"><button class="btn ghost sm" id="export">⬇️ Exportar progreso</button><button class="btn ghost sm" id="import">⬆️ Importar</button><button class="btn ghost sm" id="reset" style="--ci:#c2410c">🗑 Borrar todo</button></div></section>
       <section class="card"><h3>Actualizaciones</h3><p class="muted">Versión instalada: <b>${APP_VERSION}</b>. La app revisa si hay versiones nuevas al abrirse.</p><button class="btn ghost sm" id="upd">🔄 Buscar actualizaciones</button></section>
@@ -146,8 +154,15 @@ const Screens = {
     $('#set-color').oninput = (e) => { st.accent = e.target.value; save(); };
     $('#set-fs').oninput = (e) => { st.fontScale = +e.target.value; e.target.previousElementSibling.querySelector('small').textContent = Math.round(st.fontScale * 100) + '%'; save(); };
     $('#set-motion').onchange = (e) => { st.motion = e.target.checked ? 'reduce' : 'auto'; save(); };
-    $$('[data-k]').forEach((i) => i.onchange = () => { st[i.dataset.k] = i.checked; save(); if (i.dataset.k === 'music') Music.sync(); if (i.dataset.k === 'sound' && i.checked) Sfx.play('ok'); if (i.dataset.k === 'haptics' && i.checked) buzz(40); if (i.dataset.k === 'tts' && i.checked) Voice.speak('¡Hola! Ahora puedo hablar.'); });
+    $$('[data-k]').forEach((i) => i.onchange = () => { st[i.dataset.k] = i.checked; save(); if (i.dataset.k === 'music') Music.sync(); if (i.dataset.k === 'sound' && i.checked) Sfx.play('ok'); if (i.dataset.k === 'haptics' && i.checked) buzz(40); if (i.dataset.k === 'tts') { if (i.checked) Voice.speak(`Hola, ${S().name}. Vuelvo a estar en línea.`); else Voice.stop(); } });
     $('#upd').onclick = () => Updater.check(true);
+    const vsel = $('#set-voice');
+    Voice.init().then(() => { Voice.spanish().forEach((v) => { const o = document.createElement('option'); o.value = v.voiceURI || v.name; o.textContent = `${v.name} (${v.lang})`; if (o.value === st.voiceName) o.selected = true; vsel.append(o); }); });
+    const test = () => Voice.speak(`Hola, ${S().name}. Soy Tuerca, tu asistente de ingeniería. Todos los sistemas en línea.`);
+    vsel.onchange = () => { st.voiceName = vsel.value; save(); test(); };
+    $$('[data-persona]').forEach((b) => b.onclick = () => { st.voicePersona = b.dataset.persona; $$('[data-persona]').forEach((x) => x.setAttribute('aria-pressed', x === b)); $('#persona-desc').textContent = VOICE_PERSONAS[st.voicePersona].desc; save(); test(); });
+    $('#set-vrate').oninput = (e) => { st.voiceRate = +e.target.value; $('#vrate-l').textContent = Math.round(st.voiceRate * 100) + '%'; save(); };
+    $('#set-vrate').onchange = test; $('#voice-test').onclick = test;
     $('#export').onclick = () => { const blob = new Blob([JSON.stringify(S(), null, 1)], { type: 'application/json' }); const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `lord-of-engineer-progreso-${dayKey()}.json`; a.click(); };
     $('#import').onclick = () => { const i = document.createElement('input'); i.type = 'file'; i.accept = 'application/json'; i.onchange = async () => { try { const data = JSON.parse(await i.files[0].text()); if (typeof data.xp !== 'number') throw 0; localStorage.setItem(KEY, JSON.stringify(data)); Store.load(); Theme.apply(); toast('Progreso importado ✓'); Router.go(); } catch { toast('Archivo no válido'); } }; i.click(); };
     $('#reset').onclick = () => { if (confirm('¿Borrar TODO tu progreso? Esto no se puede deshacer.')) { Store.reset(); Theme.apply(); Mascot.render(); location.hash = '#/'; Router.go(); } };
@@ -174,8 +189,8 @@ const Runner = {
       <div class="stage" id="stage"></div>
       <div class="sheet" id="sheet" role="status"><div class="in"><div class="txt"><h3 id="sh-t"></h3><p id="sh-p"></p></div><button class="btn" id="sh-b">Continuar</button></div></div>`;
     $('#quit').onclick = () => { this.stop(); history.back(); };
-    if (g.timed) { const tick = () => { if (this.st !== st) return; const left = Math.max(0, st.end - Date.now()); $('#gbar').style.width = (left / (g.timed * 1000)) * 100 + '%'; $('#gcount').textContent = Math.ceil(left / 1000) + 's'; if (left <= 0) return this.finish(); st.timers.push(setTimeout(tick, 200)); }; tick(); }
-    Mascot.say(g.timed ? '¡Rápido! Cada combo suma puntos extra ⚡' : pick(['¡Tú puedes!', 'A darle, ingeniero/a.', 'Concéntrate, ¡vamos!', 'Si te equivocas, te explico.']), 'happy', 2200);
+    if (g.timed) { const tick = () => { if (this.st !== st) return; const left = Math.max(0, st.end - Date.now()); $('#gbar').style.width = (left / (g.timed * 1000)) * 100 + '%'; $('#gcount').textContent = Math.ceil(left / 1000) + 's'; if (left <= 0) return this.finish(); if (left < 10000 && !st.warned) { st.warned = true; Voice.speak('Diez segundos.', { important: false }); } st.timers.push(setTimeout(tick, 200)); }; tick(); }
+    Mascot.say(g.timed ? `${g.name}: sesenta segundos. Cada combo suma puntos extra. ¡Ya!` : COMPANION.start(g.name, st.diff), 'happy', 2600);
     this.next();
   },
   ctx() {
@@ -205,17 +220,18 @@ const Runner = {
     if (ok) { st.correct++; st.combo++; st.bestCombo = Math.max(st.bestCombo, st.combo); st.okRun++; st.badRun = 0; Sfx.play('ok'); buzz(18); }
     else { st.combo = 0; st.badRun++; st.okRun = 0; st.mistakes.push(exp); Sfx.play('bad'); buzz([30, 40, 30]); }
     // dificultad adaptativa dentro de la sesión
-    if (st.okRun >= (st.g.timed ? 4 : 2) && st.diff < 5) { st.diff++; st.okRun = 0; toast(`⬆ Dificultad ${st.diff}`); }
-    if (st.badRun >= 2 && st.diff > 1) { st.diff--; st.badRun = 0; toast('Bajamos un poco la dificultad 💪'); }
+    if (st.okRun >= (st.g.timed ? 4 : 2) && st.diff < 5) { st.diff++; st.okRun = 0; toast(`⬆ Dificultad ${st.diff}`); if (!st.g.timed) st.say = COMPANION.up(st.diff); }
+    if (st.badRun >= 2 && st.diff > 1) { st.diff--; st.badRun = 0; toast('Bajamos un poco la dificultad 💪'); st.say = COMPANION.down(); }
     if (st.g.timed) {
       const c = $('#gcombo'); if (c) { c.textContent = st.combo > 1 ? `x${st.combo}🔥` : ''; c.classList.remove('pop'); void c.offsetWidth; c.classList.add('pop'); }
-      if (st.combo && st.combo % 5 === 0) Mascot.say(pick(LINES.combo).replace('{n}', st.combo), 'wow', 1500, false);
+      if (st.combo && st.combo % 5 === 0) Mascot.say(COMPANION.combo(st.combo), 'wow', 1500, 'chat');
       st.timers.push(setTimeout(() => this.next(), ok ? 320 : 1300));
       if (!ok) this.sheet(false, exp, true);
       return;
     }
-    if (st.combo >= 3 && ok) Mascot.say(pick(LINES.combo).replace('{n}', st.combo), 'wow', 1800, false);
-    else Mascot.react(ok ? 'happy' : 'oops', ok ? 'jump' : 'wiggle');
+    if (st.combo >= 3 && ok) Mascot.say(COMPANION.combo(st.combo), 'wow', 1800, 'chat');
+    else { Mascot.react(ok ? 'happy' : 'oops', ok ? 'jump' : 'wiggle'); if (ok) Voice.speak(st.say || COMPANION.ok(), { important: !!st.say }); }
+    if (ok) st.say = null;
     this.sheet(ok, exp);
   },
   sheet(ok, exp, auto) {
@@ -224,7 +240,7 @@ const Runner = {
     $('#sh-t').textContent = ok ? pick(LINES.ok) : pick(LINES.bad); $('#sh-p').innerHTML = exp || '';
     $('#mascot').classList.add('sheet-up');
     const b = $('#sh-b'); b.hidden = !!auto; b.className = 'btn ' + (ok ? 'ok' : ''); b.focus({ preventScroll: true });
-    if (!ok && !auto) Voice.speak($('#sh-p').textContent);
+    if (!ok && !auto) { Voice.speak(pick(['Casi. ', 'No exactamente. ', 'Revisemos. ']) + $('#sh-p').textContent + (this.st && this.st.say ? ' ' + this.st.say : '')); if (this.st) this.st.say = null; }
     const go = () => { sh.className = 'sheet'; $('#mascot').classList.remove('sheet-up'); if (!auto) this.next(); };
     b.onclick = go;
     if (auto) this.st.timers.push(setTimeout(go, 1200));
@@ -259,33 +275,64 @@ const Runner = {
       ${st.mistakes.length ? `<details class="card mistakes" ${st.mistakes.length <= 3 ? 'open' : ''}><summary style="font-weight:800;cursor:pointer">📝 Repasa tus errores (${st.mistakes.length})</summary><ul>${st.mistakes.slice(0, 8).map((m) => `<li>${m}</li>`).join('')}</ul></details>` : ''}
       <div class="controls"><button class="btn block" data-play="${g.id}">↻ Otra vez</button><button class="btn ghost block" data-play="${nextG.id}">Siguiente: ${nextG.icon} ${nextG.name}</button><button class="btn ghost block" data-go="#/">🏠 Inicio</button></div></section>`;
     $$('.big-stars span').forEach((e, i) => setTimeout(() => { if (i < stars) { e.classList.add('on'); Sfx.play('coin'); } }, 400 + i * 350));
-    Mascot.say(msg, stars ? 'happy' : 'think', 4200);
+    Mascot.say(msg, stars ? 'happy' : 'think', 4200, false); Voice.speak(COMPANION.end(s.name, st.correct, st.answered, stars) + (r.interval >= 1 ? ` Próximo repaso en ${r.interval} día${r.interval > 1 ? 's' : ''}.` : ''));
     if (Missions.allDone() && !Missions.ensure().claimed) setTimeout(() => Mascot.say('¡Completaste la misión del día! Reclama tu premio en Inicio 🎁', 'wow'), 4500);
   },
 };
 
 
-/* ---------- actualizaciones automáticas (solo en el APK) ---------- */
+/* ---------- actualizaciones automáticas (solo en el APK) ----------
+   Dos tipos de versión en el repo público de releases:
+   - OTA (web): un .zip con la app. Se descarga en silencio y se aplica al salir y volver (plugin Capgo, modo manual).
+   - Nativa: requiere un APK nuevo (nombre, ícono, permisos). La release lo indica con "min-native: X.Y.Z". */
+const lsGet = (k) => { try { return localStorage.getItem(k); } catch { return null; } };
+const lsSet = (k, v) => { try { localStorage.setItem(k, v); } catch {} };
 const Updater = {
+  ota: null, native: null,
   isApp: () => !!(window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform()),
   newer(a, b) { const x = a.replace(/^v/, '').split('.').map(Number), y = b.replace(/^v/, '').split('.').map(Number); for (let i = 0; i < 3; i++) { if ((x[i] || 0) > (y[i] || 0)) return true; if ((x[i] || 0) < (y[i] || 0)) return false; } return false; },
+  async init() {
+    // aviso "me actualicé" tras aplicar una versión nueva
+    const prev = lsGet('axion.lastRun'); lsSet('axion.lastRun', APP_VERSION);
+    if (prev && this.newer(APP_VERSION, prev)) setTimeout(() => { toast(`✨ Actualizado a la versión ${APP_VERSION}`, 3500); Mascot.say(`¡Me actualicé a la versión ${APP_VERSION}! ⚔️`, 'wow'); }, 1200);
+    if (!this.isApp() || !window.Capacitor.registerPlugin) return;
+    try {
+      const ota = window.Capacitor.registerPlugin('CapacitorUpdater');
+      await ota.notifyAppReady(); // confirma que esta versión arrancó bien (si no, el plugin vuelve a la anterior)
+      this.native = (await ota.current()).native; this.ota = ota;
+    } catch { this.ota = null; } // APK sin el plugin (versiones ≤ 1.1.1)
+  },
   async check(manual = false) {
     if (!this.isApp() && !manual) return;
-    let last = 0; try { last = +localStorage.getItem('axion.updcheck') || 0; } catch {}
+    const last = +lsGet('axion.updcheck') || 0;
     // automático: al abrir y al volver a la app, como mucho cada 20 min; manual: siempre
     if (!manual && (Date.now() - last < 20 * 60e3 || $('.upd-offer'))) return;
     try {
       const r = await fetch(`https://api.github.com/repos/${UPDATE_REPO}/releases/latest`, { headers: { Accept: 'application/vnd.github+json' } });
       if (!r.ok) throw new Error(r.status);
-      const rel = await r.json(); try { localStorage.setItem('axion.updcheck', Date.now()); } catch {}
-      const apk = (rel.assets || []).find((a) => a.name.endsWith('.apk'));
-      if (apk && this.newer(rel.tag_name, APP_VERSION)) this.offer(rel, apk.browser_download_url);
-      else if (manual) toast(`✓ Tienes la última versión (${APP_VERSION})`);
+      const rel = await r.json(); lsSet('axion.updcheck', Date.now());
+      const tag = rel.tag_name.replace(/^v/, '');
+      if (!this.newer(tag, APP_VERSION)) { if (manual) toast(`✓ Tienes la última versión (${APP_VERSION})`); return; }
+      const minNative = ((rel.body || '').match(/min-native:\s*(\d+\.\d+\.\d+)/) || [, tag])[1];
+      const zip = (rel.assets || []).find((x) => /^web-.*\.zip$/.test(x.name));
+      const apk = (rel.assets || []).find((x) => x.name.endsWith('.apk'));
+      if (this.ota && zip && !this.newer(minNative, this.native)) return this.downloadOTA(tag, zip.browser_download_url, manual);
+      if (apk) this.offer(rel, apk.browser_download_url);
     } catch { if (manual) toast('No pude buscar actualizaciones. ¿Tienes internet?'); }
+  },
+  async downloadOTA(version, url, manual) {
+    if (lsGet('axion.otaReady') === version) { if (manual) toast(`La versión ${version} ya está lista: sal y vuelve a entrar para aplicarla`); return; }
+    if (manual) toast(`Descargando la versión ${version}…`);
+    try {
+      const b = await this.ota.download({ url, version });
+      await this.ota.next({ id: b.id }); // se aplica cuando la app pasa a segundo plano o se reabre
+      lsSet('axion.otaReady', version);
+      if (manual) toast(`✓ Versión ${version} lista: sal y vuelve a entrar para aplicarla`, 4000);
+    } catch { if (manual) toast('No se pudo descargar la actualización. Intenta de nuevo.'); }
   },
   offer(rel, url) {
     const d = document.createElement('div'); d.className = 'sheet show ok upd-offer'; d.setAttribute('role', 'dialog'); d.style.zIndex = 90;
-    d.innerHTML = `<div class="in"><div class="txt"><h3>🚀 ¡Nueva versión ${esc(rel.tag_name)}!</h3><p>${esc((rel.body || 'Mejoras y nuevos retos.').split(String.fromCharCode(10))[0].slice(0, 140))}</p><p class="muted" style="font-size:.8rem">Tu progreso se conserva. Android te pedirá confirmar la instalación.</p></div>
+    d.innerHTML = `<div class="in"><div class="txt"><h3>🚀 ¡Nueva versión ${esc(rel.tag_name)}!</h3><p>${esc((rel.body || 'Mejoras y nuevos retos.').split(String.fromCharCode(10))[0].slice(0, 140))}</p><p class="muted" style="font-size:.8rem">Esta versión trae cambios del sistema y requiere instalar el APK. Tu progreso se conserva.</p></div>
       <div class="row"><button class="btn ghost sm" data-later>Luego</button><button class="btn ok" data-upd>⬇️ Actualizar</button></div></div>`;
     document.body.append(d); Mascot.say('¡Hay una versión nueva de Lord of Engineer! ⚔️', 'wow');
     $('[data-later]', d).onclick = () => d.remove();
@@ -301,8 +348,12 @@ const Router = {
     Runner.stop(); window.scrollTo(0, 0);
     const [, a, b] = h.split('/');
     const g = a === 'play' && gameById(b);
-    Music.setTheme(g ? (g.id === 'relampago' ? 'rush' : g.subj) : a === 'subject' && MUSIC_THEMES[b] ? b : 'menu');
+    if (a !== 'lesson') Music.setTheme(g ? (g.id === 'relampago' ? 'rush' : g.subj) : a === 'subject' && MUSIC_THEMES[b] ? b : 'menu');
     if (g) Runner.start(g);
+    else if (a === 'academy') Learn.academy();
+    else if (a === 'lesson') Learn.lesson(b);
+    else if (a === 'pizarra') Learn.pizarra(decodeURIComponent(b || ''));
+    else if (a === 'notebook') Learn.notebook();
     else if (a === 'subject') Screens.subject(b);
     else if (Screens[a] && a !== 'onboarding') Screens[a]();
     else Screens.home();
@@ -323,5 +374,16 @@ document.addEventListener('pointerdown', () => { if (S().settings.music && !Musi
 
 /* ---------- arranque ---------- */
 Store.load(); Theme.apply(); Mascot.render(); Missions.ensure(); Router.go();
-setTimeout(() => Updater.check(), 2500);
-if ('serviceWorker' in navigator && location.protocol.startsWith('http')) navigator.serviceWorker.register('sw.js').catch(() => {});
+Updater.init().then(() => setTimeout(() => Updater.check(), 2000));
+// Tuerca te saluda al abrir la app con un resumen del día
+const greetBriefing = () => {
+  if (!S().onboarded || location.hash.startsWith('#/play')) return;
+  const due = SRS.dueList().length, sk = Progress.streakNow(), m = Missions.ensure();
+  const extra = [sk ? `Racha de ${sk} día${sk > 1 ? 's' : ''}.` : '', due ? `Tienes ${due} repaso${due > 1 ? 's' : ''} pendiente${due > 1 ? 's' : ''}.` : '', m.claimed ? 'Misión del día completada.' : '¿Empezamos con la misión del día?'].filter(Boolean).join(' ');
+  const line = COMPANION.greet(S().name, extra); Mascot.say(line, 'happy', 5000, false); Voice.speak(line);
+};
+// el navegador solo deja hablar tras un toque; en el APK suena al abrir
+if (Updater.isApp()) setTimeout(greetBriefing, 900); else document.addEventListener('pointerdown', () => setTimeout(greetBriefing, 150), { once: true });
+// el service worker solo en la versión web; en el APK los archivos ya están en el dispositivo
+if ('serviceWorker' in navigator && location.protocol.startsWith('http') && !Updater.isApp()) navigator.serviceWorker.register('sw.js').catch(() => {});
+else if ('serviceWorker' in navigator && Updater.isApp()) navigator.serviceWorker.getRegistrations().then((rs) => rs.forEach((r) => r.unregister())).catch(() => {}); // limpia el de versiones ≤ 1.1.1

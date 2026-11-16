@@ -304,3 +304,20 @@ input[type=color] { width: 48px; height: 48px; border: 0; padding: 0; border-rad
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: .001ms !important; animation-iteration-count: 1 !important; transition-duration: .001ms !important; } }
 :root[data-motion="reduce"] *, :root[data-motion="reduce"] *::before, :root[data-motion="reduce"] *::after { animation-duration: .001ms !important; animation-iteration-count: 1 !important; transition-duration: .001ms !important; }
 @media (min-width: 700px) { .opt { min-height: 84px; } .mascot-btn { width: 88px; height: 88px; } }
+
+/* ---------- Academia ---------- */
+.lesson { font-size: 1.05rem; }
+.lesson h2 { font-size: 1.35rem; }
+.lesson-text p { margin: 0 0 .8em; }
+.lesson-text code, .lesson code { font-family: ui-monospace, "Cascadia Code", Consolas, monospace; background: var(--surface2); padding: 1px 6px; border-radius: 6px; font-size: .92em; }
+.formula { font-family: "Baloo 2", sans-serif; font-weight: 800; font-size: clamp(1.15rem, 5vw, 1.6rem); text-align: center; padding: 16px 12px; margin: 6px 0 12px; border-radius: 16px; background: color-mix(in srgb, var(--accent) 12%, var(--surface)); border: 2px solid color-mix(in srgb, var(--accent) 40%, transparent); line-height: 1.35; }
+.callout { padding: 12px 14px; border-radius: 14px; margin: 10px 0; background: var(--surface2); border: 2px solid var(--line); font-weight: 700; }
+.callout.ok { background: var(--ok-bg); border-color: var(--ok); }
+.callout.bad { background: var(--bad-bg); border-color: var(--bad); }
+ol.steps { padding-left: 22px; margin: 8px 0 12px; }
+ol.steps li { margin-bottom: 10px; font-weight: 700; animation: pop .25s; }
+.step-expr { font-family: "Baloo 2", sans-serif; font-size: 1.35rem; font-weight: 800; padding: 4px 0; color: var(--ink); overflow-wrap: anywhere; }
+ul.summary { padding-left: 20px; margin: 6px 0; }
+ul.summary li { margin-bottom: 8px; font-weight: 700; }
+ul.summary li::marker { content: "✓  "; color: var(--ok); }
+.tabbar button { font-size: .68rem; }
