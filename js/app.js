@@ -272,7 +272,8 @@ const Updater = {
   async check(manual = false) {
     if (!this.isApp() && !manual) return;
     let last = 0; try { last = +localStorage.getItem('axion.updcheck') || 0; } catch {}
-    if (!manual && Date.now() - last < 6 * H) return;
+    // automático: al abrir y al volver a la app, como mucho cada 20 min; manual: siempre
+    if (!manual && (Date.now() - last < 20 * 60e3 || $('.upd-offer'))) return;
     try {
       const r = await fetch(`https://api.github.com/repos/${UPDATE_REPO}/releases/latest`, { headers: { Accept: 'application/vnd.github+json' } });
       if (!r.ok) throw new Error(r.status);
@@ -283,7 +284,7 @@ const Updater = {
     } catch { if (manual) toast('No pude buscar actualizaciones. ¿Tienes internet?'); }
   },
   offer(rel, url) {
-    const d = document.createElement('div'); d.className = 'sheet show ok'; d.setAttribute('role', 'dialog'); d.style.zIndex = 90;
+    const d = document.createElement('div'); d.className = 'sheet show ok upd-offer'; d.setAttribute('role', 'dialog'); d.style.zIndex = 90;
     d.innerHTML = `<div class="in"><div class="txt"><h3>🚀 ¡Nueva versión ${esc(rel.tag_name)}!</h3><p>${esc((rel.body || 'Mejoras y nuevos retos.').split(String.fromCharCode(10))[0].slice(0, 140))}</p><p class="muted" style="font-size:.8rem">Tu progreso se conserva. Android te pedirá confirmar la instalación.</p></div>
       <div class="row"><button class="btn ghost sm" data-later>Luego</button><button class="btn ok" data-upd>⬇️ Actualizar</button></div></div>`;
     document.body.append(d); Mascot.say('¡Hay una versión nueva de Lord of Engineer! ⚔️', 'wow');
@@ -317,7 +318,7 @@ document.addEventListener('click', (e) => {
 $('#mascot-btn').addEventListener('click', () => { Sfx.init(); Sfx.play('tap'); Mascot.say(pick(LINES.tips), 'happy', 5000); });
 window.addEventListener('hashchange', () => Router.go());
 matchMedia('(prefers-color-scheme: dark)').addEventListener?.('change', () => Theme.apply());
-document.addEventListener('visibilitychange', () => { if (document.hidden) Music.stop(); else Music.sync(); });
+document.addEventListener('visibilitychange', () => { if (document.hidden) Music.stop(); else { Music.sync(); Updater.check(); } });
 document.addEventListener('pointerdown', () => { if (S().settings.music && !Music.timer) Music.start(); }, { once: true });
 
 /* ---------- arranque ---------- */
