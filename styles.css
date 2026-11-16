@@ -1,4 +1,4 @@
-/* ============ AXIÓN · estilos ============ */
+/* ============ Lord of Engineer · estilos ============ */
 :root {
   --accent: #7c5cff;
   --accent-ink: #ffffff;
@@ -66,8 +66,9 @@ button { font: inherit; color: inherit; }
   backdrop-filter: blur(10px);
 }
 .brand { display: flex; align-items: center; gap: 6px; background: none; border: 0; cursor: pointer; padding: 4px; }
-.brand-mark { display: grid; place-items: center; width: 34px; height: 34px; border-radius: 11px; background: var(--accent); color: var(--accent-ink); font-size: 1.1rem; box-shadow: 0 3px 0 color-mix(in srgb, var(--accent) 60%, #000); }
-.brand-name { font-family: "Baloo 2", sans-serif; font-weight: 800; font-size: 1.35rem; letter-spacing: .5px; }
+.brand-mark { display: block; width: 38px; height: 38px; border-radius: 11px; box-shadow: 0 3px 0 rgba(0,0,0,.25); }
+.brand-name { font-family: "Baloo 2", sans-serif; font-weight: 800; font-size: 1.15rem; line-height: .95; letter-spacing: .3px; text-align: left; }
+.brand-name small { display: block; font-size: .68rem; letter-spacing: 1.5px; text-transform: uppercase; color: var(--muted); }
 .hud { display: flex; gap: 6px; }
 .pill { display: inline-flex; align-items: center; gap: 4px; padding: 5px 10px; border-radius: 999px; background: var(--surface); border: 2px solid var(--line); font-weight: 800; font-size: .9rem; white-space: nowrap; }
 .pill.lvl { background: var(--accent); color: var(--accent-ink); border-color: transparent; }
@@ -268,7 +269,7 @@ input[type=color] { width: 48px; height: 48px; border: 0; padding: 0; border-rad
 /* onboarding */
 .onb { min-height: 90dvh; display: flex; flex-direction: column; justify-content: center; gap: 16px; text-align: center; }
 .onb .big-mascot { width: 170px; margin: 0 auto; animation: bob 3s ease-in-out infinite; }
-.logo-big { font-family: "Baloo 2", sans-serif; font-weight: 800; font-size: clamp(3rem, 14vw, 4.6rem); line-height: .9; letter-spacing: 2px;
+.logo-big { font-family: "Baloo 2", sans-serif; font-weight: 800; font-size: clamp(2.6rem, 12vw, 4rem); line-height: .95; letter-spacing: 2px;
   background: linear-gradient(135deg, var(--accent), #ff6bd6 60%, #ffb13d); -webkit-background-clip: text; background-clip: text; color: transparent; }
 
 /* game-specific */

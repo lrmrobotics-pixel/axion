@@ -1,4 +1,4 @@
-/* ============ AXIÓN · pantallas, navegación y motor de sesiones ============ */
+/* ============ Lord of Engineer · pantallas, navegación y motor de sesiones ============ */
 'use strict';
 
 const ACCENTS = [['#ef4444', 'Rojo'], ['#2f7df6', 'Azul'], ['#10a37a', 'Verde'], ['#7c5cff', 'Morado'], ['#ff7a2f', 'Naranja'], ['#ec4899', 'Rosa'], ['#0891b2', 'Cian']];
@@ -31,7 +31,7 @@ const Screens = {
   onboarding(step = 0) {
     chrome(false); $('#mascot').hidden = true; const m = $('#main');
     if (step === 0) {
-      m.innerHTML = `<section class="onb"><div class="big-mascot">${mascotSVG('happy')}</div><div class="logo-big">AXIÓN</div>
+      m.innerHTML = `<section class="onb"><div class="big-mascot">${mascotSVG('happy')}</div><div class="logo-big">Lord of<br>Engineer</div>
         <p style="font-size:1.15rem;font-weight:700">Entrena tu mente de ingeniería con minijuegos de 5 a 10 minutos al día.</p>
         <p class="muted">Matemáticas · Física · Electrónica · Programación · Mecánica</p>
         <button class="btn block" id="ob-go">¡Empezar! 🚀</button></section>`;
@@ -137,7 +137,7 @@ const Screens = {
       <section class="card"><h3>Datos y privacidad</h3><p class="muted">Todo tu progreso se guarda solo en este dispositivo. No recopilamos datos personales.</p>
         <div class="row"><button class="btn ghost sm" id="export">⬇️ Exportar progreso</button><button class="btn ghost sm" id="import">⬆️ Importar</button><button class="btn ghost sm" id="reset" style="--ci:#c2410c">🗑 Borrar todo</button></div></section>
       <section class="card"><h3>Actualizaciones</h3><p class="muted">Versión instalada: <b>${APP_VERSION}</b>. La app revisa si hay versiones nuevas al abrirse.</p><button class="btn ghost sm" id="upd">🔄 Buscar actualizaciones</button></section>
-      <p class="center muted" style="font-size:.8rem">AXIÓN v${APP_VERSION} · Complemento de estudio, no reemplaza el plan oficial de tu carrera.</p>`;
+      <p class="center muted" style="font-size:.8rem">Lord of Engineer v${APP_VERSION} · Complemento de estudio, no reemplaza el plan oficial de tu carrera.</p>`;
     const save = () => { Store.save(); Theme.apply(); Mascot.render(); note(); };
     const note = () => { const c = contrast(S().settings.accent, Theme.isDark() ? '#1d1b2d' : '#ffffff'); $('#contrast-note').textContent = `Contraste del color con el fondo: ${c.toFixed(1)}:1 ${c >= 3 ? '✓ buena visibilidad' : '⚠ bajo: los botones usarán texto oscuro'}`; };
     note();
@@ -148,7 +148,7 @@ const Screens = {
     $('#set-motion').onchange = (e) => { st.motion = e.target.checked ? 'reduce' : 'auto'; save(); };
     $$('[data-k]').forEach((i) => i.onchange = () => { st[i.dataset.k] = i.checked; save(); if (i.dataset.k === 'music') Music.sync(); if (i.dataset.k === 'sound' && i.checked) Sfx.play('ok'); if (i.dataset.k === 'haptics' && i.checked) buzz(40); if (i.dataset.k === 'tts' && i.checked) Voice.speak('¡Hola! Ahora puedo hablar.'); });
     $('#upd').onclick = () => Updater.check(true);
-    $('#export').onclick = () => { const blob = new Blob([JSON.stringify(S(), null, 1)], { type: 'application/json' }); const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `axion-progreso-${dayKey()}.json`; a.click(); };
+    $('#export').onclick = () => { const blob = new Blob([JSON.stringify(S(), null, 1)], { type: 'application/json' }); const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `lord-of-engineer-progreso-${dayKey()}.json`; a.click(); };
     $('#import').onclick = () => { const i = document.createElement('input'); i.type = 'file'; i.accept = 'application/json'; i.onchange = async () => { try { const data = JSON.parse(await i.files[0].text()); if (typeof data.xp !== 'number') throw 0; localStorage.setItem(KEY, JSON.stringify(data)); Store.load(); Theme.apply(); toast('Progreso importado ✓'); Router.go(); } catch { toast('Archivo no válido'); } }; i.click(); };
     $('#reset').onclick = () => { if (confirm('¿Borrar TODO tu progreso? Esto no se puede deshacer.')) { Store.reset(); Theme.apply(); Mascot.render(); location.hash = '#/'; Router.go(); } };
   },
@@ -286,7 +286,7 @@ const Updater = {
     const d = document.createElement('div'); d.className = 'sheet show ok'; d.setAttribute('role', 'dialog'); d.style.zIndex = 90;
     d.innerHTML = `<div class="in"><div class="txt"><h3>🚀 ¡Nueva versión ${esc(rel.tag_name)}!</h3><p>${esc((rel.body || 'Mejoras y nuevos retos.').split(String.fromCharCode(10))[0].slice(0, 140))}</p><p class="muted" style="font-size:.8rem">Tu progreso se conserva. Android te pedirá confirmar la instalación.</p></div>
       <div class="row"><button class="btn ghost sm" data-later>Luego</button><button class="btn ok" data-upd>⬇️ Actualizar</button></div></div>`;
-    document.body.append(d); Mascot.say('¡Hay una versión nueva de AXIÓN! 🚀', 'wow');
+    document.body.append(d); Mascot.say('¡Hay una versión nueva de Lord of Engineer! ⚔️', 'wow');
     $('[data-later]', d).onclick = () => d.remove();
     $('[data-upd]', d).onclick = () => { d.remove(); toast('Descargando… abre el archivo al terminar para instalar'); location.href = url; };
   },
@@ -299,7 +299,9 @@ const Router = {
     const h = location.hash || '#/'; if (!S().onboarded) return Screens.onboarding(0);
     Runner.stop(); window.scrollTo(0, 0);
     const [, a, b] = h.split('/');
-    if (a === 'play' && gameById(b)) Runner.start(gameById(b));
+    const g = a === 'play' && gameById(b);
+    Music.setTheme(g ? (g.id === 'relampago' ? 'rush' : g.subj) : a === 'subject' && MUSIC_THEMES[b] ? b : 'menu');
+    if (g) Runner.start(g);
     else if (a === 'subject') Screens.subject(b);
     else if (Screens[a] && a !== 'onboarding') Screens[a]();
     else Screens.home();
@@ -308,7 +310,8 @@ const Router = {
 };
 
 document.addEventListener('click', (e) => {
-  const p = e.target.closest('[data-play]'); if (p) { Sfx.init(); Sfx.play('tap'); location.hash = '#/play/' + p.dataset.play; return; }
+  // Router.nav: si ya estás en ese juego (botón "Otra vez"), lo reinicia aunque la dirección no cambie
+  const p = e.target.closest('[data-play]'); if (p) { Sfx.init(); Sfx.play('tap'); Router.nav('#/play/' + p.dataset.play); return; }
   const g = e.target.closest('[data-go]'); if (g) { Sfx.play('tap'); Router.nav(g.dataset.go); }
 });
 $('#mascot-btn').addEventListener('click', () => { Sfx.init(); Sfx.play('tap'); Mascot.say(pick(LINES.tips), 'happy', 5000); });

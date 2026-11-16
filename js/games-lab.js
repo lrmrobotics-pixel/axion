@@ -1,4 +1,4 @@
-/* ============ AXIÓN · laboratorio: física, electrónica, programación, mecánica ============ */
+/* ============ Lord of Engineer · laboratorio: física, electrónica, programación, mecánica ============ */
 'use strict';
 
 /* ---------- Física: Cañón Parabólico ---------- */

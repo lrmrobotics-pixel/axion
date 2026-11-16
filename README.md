@@ -1,4 +1,4 @@
-# AXIÓN ⚡
+# Lord of Engineer ⚔️
 
 Entrena tu mente de ingeniería con minijuegos de 5 a 10 minutos al día.
 Tu compañero es **Tuerca**, un robot que te guía, celebra tus logros y te explica cada error.
@@ -54,4 +54,4 @@ El APK queda en `android/app/build/outputs/apk/debug/app-debug.apk`.
 - `sw.js`, `manifest.webmanifest`: PWA sin conexión.
 - `android/`: proyecto Capacitor.
 
-> AXIÓN es un complemento de estudio; no reemplaza el plan oficial de tu carrera.
+> Lord of Engineer es un complemento de estudio; no reemplaza el plan oficial de tu carrera.

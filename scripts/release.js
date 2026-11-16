@@ -1,4 +1,4 @@
-// Publica una nueva versión de AXIÓN:
+// Publica una nueva versión de Lord of Engineer:
 //   node scripts/release.js 1.0.1 "Qué hay de nuevo"
 // 1) actualiza la versión en js/core.js y android/app/build.gradle
 // 2) compila el APK firmado
@@ -33,12 +33,13 @@ const pj = JSON.parse(fs.readFileSync(pkg, 'utf8')); pj.version = version; fs.wr
 // 2) compilar
 run('node scripts/build-web.js');
 run('npx cap sync android');
-run(process.platform === 'win32' ? 'gradlew.bat assembleRelease' : './gradlew assembleRelease', path.join(root, 'android'));
+const androidDir = path.join(root, 'android');
+run(`"${path.join(androidDir, process.platform === 'win32' ? 'gradlew.bat' : 'gradlew')}" assembleRelease`, androidDir);
 
 // 3) copiar y publicar
 const apk = path.join(root, 'android/app/build/outputs/apk/release/app-release.apk');
-const out = path.join(os.homedir(), 'Desktop', `AXION-${version}.apk`);
+const out = path.join(os.homedir(), 'Desktop', `LordOfEngineer-${version}.apk`);
 fs.copyFileSync(apk, out);
 console.log('APK en', out);
-run(`gh release create v${version} "${out}" --repo ${RELEASE_REPO} --title "AXIÓN ${version}" --notes "${notes.replace(/"/g, "'")}"`);
+run(`gh release create v${version} "${out}" --repo ${RELEASE_REPO} --title "Lord of Engineer ${version}" --notes "${notes.replace(/"/g, "'")}"`);
 console.log(`Listo: https://github.com/${RELEASE_REPO}/releases/latest`);

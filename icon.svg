@@ -1,10 +1,57 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
-  <defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#7c5cff"/><stop offset=".6" stop-color="#ff6bd6"/><stop offset="1" stop-color="#ffb13d"/></linearGradient></defs>
-  <rect width="512" height="512" rx="112" fill="url(#g)"/>
-  <rect x="116" y="150" width="280" height="230" rx="80" fill="#1a1830"/>
-  <line x1="256" y1="150" x2="256" y2="96" stroke="#1a1830" stroke-width="18"/>
-  <circle cx="256" cy="86" r="26" fill="#ffc53d"/>
-  <path d="M176 258 Q206 214 236 258" stroke="#7dffd8" stroke-width="20" fill="none" stroke-linecap="round"/>
-  <path d="M276 258 Q306 214 336 258" stroke="#7dffd8" stroke-width="20" fill="none" stroke-linecap="round"/>
-  <path d="M210 300 Q256 350 302 300 Z" fill="#7dffd8"/>
+  <!-- Lord of Engineer: Tuerca con armadura de caballero hecha de circuitos.
+       Solo usa <path> dentro de #knight para poder convertirlo al ícono adaptable de Android. -->
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#2a1a5e"/><stop offset="1" stop-color="#120d2b"/></linearGradient>
+    <radialGradient id="glow" cx=".5" cy=".42" r=".5"><stop offset="0" stop-color="#7c5cff" stop-opacity=".55"/><stop offset="1" stop-color="#7c5cff" stop-opacity="0"/></radialGradient>
+  </defs>
+  <rect width="512" height="512" rx="112" fill="url(#bg)"/>
+  <rect width="512" height="512" rx="112" fill="url(#glow)"/>
+  <g id="knight">
+    <!-- penacho de cables -->
+    <path d="M256 104 C262 70 292 46 330 44" fill="none" stroke="#ef4444" stroke-width="12" stroke-linecap="round"/>
+    <path d="M256 104 C270 78 310 66 350 74" fill="none" stroke="#ffc53d" stroke-width="12" stroke-linecap="round"/>
+    <path d="M256 104 C276 90 318 92 352 108" fill="none" stroke="#3bc1ff" stroke-width="12" stroke-linecap="round"/>
+    <path d="M322 34 H346 V54 H322 Z" fill="#d4a017"/>
+    <path d="M344 64 H368 V84 H344 Z" fill="#d4a017"/>
+    <path d="M346 98 H370 V118 H346 Z" fill="#d4a017"/>
+    <!-- espada de circuito (detrás del hombro) -->
+    <path d="M410 168 L426 140 L442 168 V372 H410 Z" fill="#cfd5e0" stroke="#5b6170" stroke-width="5" stroke-linejoin="round"/>
+    <path d="M426 170 V300 L414 312 M426 250 L438 262" fill="none" stroke="#e8b923" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M388 360 H464 V378 H388 Z" fill="#d4a017" stroke="#8a6400" stroke-width="4"/>
+    <!-- hombreras y peto (placa de circuito) -->
+    <path d="M70 512 V448 C70 402 110 376 160 376 H352 C402 376 442 402 442 448 V512 Z" fill="#0e7a4a" stroke="#06402a" stroke-width="8"/>
+    <path d="M70 448 C70 412 100 388 140 384 C150 410 150 440 140 470 C110 470 86 462 70 448 Z" fill="#11935a" stroke="#06402a" stroke-width="6"/>
+    <path d="M442 448 C442 412 412 388 372 384 C362 410 362 440 372 470 C402 470 426 462 442 448 Z" fill="#11935a" stroke="#06402a" stroke-width="6"/>
+    <!-- pistas del peto -->
+    <path d="M170 512 V470 L200 440 H226" fill="none" stroke="#e8b923" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M342 512 V470 L312 440 H286" fill="none" stroke="#e8b923" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M256 470 V512" fill="none" stroke="#e8b923" stroke-width="7" stroke-linecap="round"/>
+    <!-- chip central -->
+    <path d="M222 412 H290 A8 8 0 0 1 298 420 V462 A8 8 0 0 1 290 470 H222 A8 8 0 0 1 214 462 V420 A8 8 0 0 1 222 412 Z" fill="#1a1830" stroke="#0b0a18" stroke-width="4"/>
+    <path d="M226 404 V412 M242 404 V412 M258 404 V412 M274 404 V412 M290 404 V412 M226 470 V478 M242 470 V478 M258 470 V478 M274 470 V478 M290 470 V478" fill="none" stroke="#c9ced8" stroke-width="5"/>
+    <path d="M247 441 L262 424 L258 438 L268 438 L252 458 L256 444 Z" fill="#ffc53d"/>
+    <!-- gorjal -->
+    <path d="M196 356 H316 V386 H196 Z" fill="#0a5a37" stroke="#06402a" stroke-width="6"/>
+    <!-- yelmo -->
+    <path d="M256 98 C330 98 380 150 380 238 V318 C380 350 358 370 326 370 H186 C154 370 132 350 132 318 V238 C132 150 182 98 256 98 Z" fill="#0e7a4a" stroke="#06402a" stroke-width="9"/>
+    <!-- cresta dorada -->
+    <path d="M246 100 H266 V206 H246 Z" fill="#d4a017"/>
+    <!-- pistas del yelmo -->
+    <path d="M158 250 V196 L190 164 H220" fill="none" stroke="#e8b923" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M354 250 V196 L322 164 H292" fill="none" stroke="#e8b923" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M156 318 H186 L204 336 H236" fill="none" stroke="#e8b923" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M356 318 H326 L308 336 H276" fill="none" stroke="#e8b923" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>
+    <!-- pads de soldadura -->
+    <path d="M208 164 A12 12 0 1 1 232 164 A12 12 0 1 1 208 164 Z M280 164 A12 12 0 1 1 304 164 A12 12 0 1 1 280 164 Z M146 250 A12 12 0 1 1 170 250 A12 12 0 1 1 146 250 Z M342 250 A12 12 0 1 1 366 250 A12 12 0 1 1 342 250 Z M226 336 A10 10 0 1 1 246 336 A10 10 0 1 1 226 336 Z M266 336 A10 10 0 1 1 286 336 A10 10 0 1 1 266 336 Z" fill="#ffd23f" stroke="#a87a00" stroke-width="3"/>
+    <!-- rejillas de respiración del yelmo -->
+    <path d="M146 272 H170 V280 H146 Z M146 288 H170 V296 H146 Z M146 304 H170 V312 H146 Z M342 272 H366 V280 H342 Z M342 288 H366 V296 H342 Z M342 304 H366 V312 H342 Z" fill="#06402a"/>
+    <!-- visera con la cara de Tuerca -->
+    <path d="M208 212 H304 A30 30 0 0 1 334 242 V270 A30 30 0 0 1 304 300 H208 A30 30 0 0 1 178 270 V242 A30 30 0 0 1 208 212 Z" fill="#14122a" stroke="#06402a" stroke-width="6"/>
+    <path d="M204 264 Q222 236 240 264" fill="none" stroke="#7dffd8" stroke-width="13" stroke-linecap="round"/>
+    <path d="M272 264 Q290 236 308 264" fill="none" stroke="#7dffd8" stroke-width="13" stroke-linecap="round"/>
+    <path d="M236 280 Q256 296 276 280" fill="none" stroke="#7dffd8" stroke-width="8" stroke-linecap="round"/>
+    <!-- LED rojo de estado -->
+    <path d="M242 380 A14 14 0 1 1 270 380 A14 14 0 1 1 242 380 Z" fill="#ff3b3b" stroke="#7a1a1a" stroke-width="4"/>
+  </g>
 </svg>

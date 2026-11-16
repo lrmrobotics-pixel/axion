@@ -1,4 +1,4 @@
-/* ============ AXIÓN · minijuegos de matemáticas ============
+/* ============ Lord of Engineer · minijuegos de matemáticas ============
    Cada juego: { id, subj, name, icon, desc, rounds|timed, round(ctx) }
    ctx: { stage, diff (1-5), answer(ok, explicación), say(), cleanup(fn) } */
 'use strict';

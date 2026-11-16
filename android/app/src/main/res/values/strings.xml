@@ -1,7 +1,7 @@
 <?xml version='1.0' encoding='utf-8'?>
 <resources>
-    <string name="app_name">AXIÓN</string>
-    <string name="title_activity_main">AXIÓN</string>
+    <string name="app_name">Lord of Engineer</string>
+    <string name="title_activity_main">Lord of Engineer</string>
     <string name="package_name">com.lrmrobotics.axion</string>
     <string name="custom_url_scheme">com.lrmrobotics.axion</string>
 </resources>

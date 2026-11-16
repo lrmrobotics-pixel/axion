@@ -1,10 +1,10 @@
-/* ============ AXIÓN · núcleo ============
+/* ============ Lord of Engineer · núcleo ============
    Estado, persistencia, tema, audio, mascota, repetición espaciada (SM-2),
    economía (XP, tornillos, rachas), misiones e insignias. */
 'use strict';
 
 /* Versión de la app: la actualiza scripts/release.js */
-const APP_VERSION = '1.0.0';
+const APP_VERSION = '1.1.0';
 const UPDATE_REPO = 'lrmrobotics-pixel/axion-releases';
 
 /* ---------- utilidades ---------- */
@@ -102,23 +102,84 @@ const Sfx = {
     }[name] || (() => {}))();
   },
 };
+/* ---------- música adaptativa ----------
+   Secuenciador con planificación anticipada (suena fluido aunque la pantalla esté ocupada),
+   envolventes suaves, filtro y eco. Cada ambiente tiene su tema y se cambia con fundido cruzado. */
+const midi = (m) => 440 * 2 ** ((m - 69) / 12);
+const CH = { M: [0, 4, 7, 11], m: [0, 3, 7, 10], s: [0, 5, 7, 10] }; // mayor7, menor7, sus
+const MUSIC_THEMES = {
+  menu:    { bpm: 74,  prog: [[60, 'M'], [57, 'm'], [65, 'M'], [62, 'm']], arp: [0, -1, 1, -1, 2, -1, 1, -1], lead: 'triangle', pad: 'sine', cutoff: 1600, vol: .5, drums: 0 },
+  mate:    { bpm: 92,  prog: [[62, 'M'], [59, 'm'], [67, 'M'], [64, 's']], arp: [0, 1, 2, 3, 2, 1, 0, 1], lead: 'triangle', pad: 'sine', cutoff: 2400, vol: .45, drums: 1 },
+  fisica:  { bpm: 104, prog: [[64, 'm'], [60, 'M'], [67, 'M'], [62, 'M']], arp: [0, 2, 1, 2, 0, 3, 1, 2], lead: 'triangle', pad: 'triangle', cutoff: 2200, vol: .42, drums: 1 },
+  electro: { bpm: 112, prog: [[57, 'm'], [65, 'M'], [60, 'M'], [67, 's']], arp: [0, 2, 3, 2, 1, 2, 3, 2], lead: 'square', pad: 'sawtooth', cutoff: 1400, vol: .32, drums: 2 },
+  codigo:  { bpm: 120, prog: [[60, 'M'], [67, 'M'], [57, 'm'], [65, 'M']], arp: [0, 1, 2, 1, 3, 2, 1, 2], lead: 'square', pad: 'triangle', cutoff: 2600, vol: .3, drums: 2 },
+  meca:    { bpm: 86,  prog: [[62, 'm'], [60, 'M'], [58, 'M'], [60, 's']], arp: [0, -1, 0, 2, -1, 1, 0, -1], lead: 'sawtooth', pad: 'triangle', cutoff: 900, vol: .4, drums: 1 },
+  rush:    { bpm: 140, prog: [[57, 'm'], [65, 'M'], [67, 'M'], [64, 's']], arp: [0, 1, 2, 3, 2, 3, 1, 2], lead: 'square', pad: 'sawtooth', cutoff: 2000, vol: .3, drums: 3 },
+};
 const Music = {
-  timer: null, gain: null, step: 0,
-  scale: [261.6, 293.7, 329.6, 392, 440, 523.3, 587.3, 659.3],
+  on: false, theme: 'menu', bus: null, filter: null, timer: null, next: 0, step: 0, noise: null,
   sync() { if (S().settings.music) this.start(); else this.stop(); },
-  start() {
-    const c = Sfx.init(); if (!c || this.timer) return;
-    this.gain = c.createGain(); this.gain.gain.value = .35; this.gain.connect(c.destination);
-    const chords = [[0, 2, 4], [3, 5, 7], [4, 6, 1], [2, 4, 6]];
-    this.timer = setInterval(() => {
-      const ch = chords[Math.floor(this.step / 8) % chords.length];
-      const n = this.scale[ch[this.step % 3]] * (this.step % 4 === 0 ? .5 : 1);
-      Sfx.tone(n, .9, 'sine', .05, 0, this.gain);
-      if (this.step % 8 === 0) Sfx.tone(this.scale[ch[0]] / 2, 2.2, 'triangle', .04, 0, this.gain);
-      this.step++;
-    }, 420);
+  build() {
+    const c = Sfx.init(); if (!c) return null;
+    if (this.bus) return c;
+    this.bus = c.createGain(); this.bus.gain.value = 0;
+    this.filter = c.createBiquadFilter(); this.filter.type = 'lowpass'; this.filter.Q.value = .7;
+    const dly = c.createDelay(1), fb = c.createGain(), wet = c.createGain(); dly.delayTime.value = .33; fb.gain.value = .32; wet.gain.value = .22;
+    this.filter.connect(this.bus); this.filter.connect(dly); dly.connect(fb).connect(dly); dly.connect(wet).connect(this.bus);
+    this.bus.connect(c.destination);
+    const buf = c.createBuffer(1, c.sampleRate * .2, c.sampleRate), d = buf.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1; this.noise = buf;
+    return c;
   },
-  stop() { clearInterval(this.timer); this.timer = null; if (this.gain) { try { this.gain.disconnect(); } catch {} this.gain = null; } },
+  start() {
+    if (this.on) return; const c = this.build(); if (!c) return;
+    this.on = true; this.next = c.currentTime + .1; this.step = 0; this.apply(true);
+    this.timer = setInterval(() => this.schedule(), 25);
+  },
+  stop() {
+    if (!this.on) return; this.on = false; clearInterval(this.timer); this.timer = null;
+    const c = Sfx.ctx; if (c && this.bus) { this.bus.gain.cancelScheduledValues(c.currentTime); this.bus.gain.setTargetAtTime(0, c.currentTime, .25); }
+  },
+  setTheme(name) {
+    if (!MUSIC_THEMES[name] || name === this.theme) return;
+    this.theme = name; if (this.on) this.apply(false);
+  },
+  apply(first) {
+    const c = Sfx.ctx, T = MUSIC_THEMES[this.theme]; if (!c || !this.bus) return; const now = c.currentTime;
+    this.bus.gain.cancelScheduledValues(now);
+    if (first) this.bus.gain.setValueAtTime(0, now); else this.bus.gain.setTargetAtTime(T.vol * .25, now, .25); // bajada suave
+    this.bus.gain.setTargetAtTime(T.vol, now + (first ? 0 : .6), .6);
+    this.filter.frequency.setTargetAtTime(T.cutoff, now, .8);
+  },
+  voice(freq, t, dur, type, vol, attack = .02) {
+    const c = Sfx.ctx, o = c.createOscillator(), g = c.createGain(); o.type = type; o.frequency.value = freq;
+    if (type !== 'sine') o.detune.value = (Math.random() - .5) * 8;
+    g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(vol, t + attack); g.gain.setTargetAtTime(0, t + attack, dur / 3);
+    o.connect(g).connect(this.filter); o.start(t); o.stop(t + dur * 1.6 + .1);
+  },
+  perc(t, kind) {
+    const c = Sfx.ctx;
+    if (kind === 'kick') { const o = c.createOscillator(), g = c.createGain(); o.frequency.setValueAtTime(120, t); o.frequency.exponentialRampToValueAtTime(42, t + .18); g.gain.setValueAtTime(.35, t); g.gain.exponentialRampToValueAtTime(.001, t + .25); o.connect(g).connect(this.bus); o.start(t); o.stop(t + .3); return; }
+    const n = c.createBufferSource(), hp = c.createBiquadFilter(), g = c.createGain(); n.buffer = this.noise; hp.type = 'highpass'; hp.frequency.value = kind === 'hat' ? 7000 : 2500;
+    g.gain.setValueAtTime(kind === 'hat' ? .05 : .03, t); g.gain.exponentialRampToValueAtTime(.001, t + (kind === 'hat' ? .05 : .12)); n.connect(hp).connect(g).connect(this.bus); n.start(t); n.stop(t + .15);
+  },
+  schedule() {
+    const c = Sfx.ctx; if (!c || !this.on) return;
+    while (this.next < c.currentTime + .15) { this.play(this.step, this.next); const T = MUSIC_THEMES[this.theme]; this.next += 60 / T.bpm / 2; this.step++; }
+  },
+  play(step, t) {
+    const T = MUSIC_THEMES[this.theme], eighth = 60 / T.bpm / 2, bar = Math.floor(step / 8), pos = step % 8;
+    const [root, q] = T.prog[bar % T.prog.length], notes = CH[q].map((iv) => root + iv);
+    if (pos === 0) {
+      notes.slice(0, 3).forEach((n) => this.voice(midi(n), t, eighth * 8, T.pad, .045, .35)); // colchón de acordes
+      this.voice(midi(root - 24), t, eighth * 3, 'triangle', .12, .01); // bajo
+    }
+    if (pos === 4) this.voice(midi(root - 24 + (T.drums ? 7 : 0)), t, eighth * 2, 'triangle', .09, .01);
+    const a = T.arp[pos]; if (a >= 0) this.voice(midi(notes[a % notes.length] + 12), t, eighth * 1.6, T.lead, T.lead === 'sine' || T.lead === 'triangle' ? .05 : .022);
+    if (T.drums >= 1 && pos % 4 === 0) this.perc(t, 'kick');
+    if (T.drums >= 2 && pos % 2 === 1) this.perc(t, 'hat');
+    if (T.drums >= 3 && pos === 4) this.perc(t, 'snare');
+    if (this.theme === 'meca' && pos === 6) this.perc(t, 'snare'); // clank mecánico
+  },
 };
 const buzz = (p = 15) => { if (S().settings.haptics && navigator.vibrate) { try { navigator.vibrate(p); } catch {} } };
 const Voice = {

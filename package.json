@@ -1,7 +1,7 @@
 {
   "name": "axion",
-  "version": "1.0.0",
-  "description": "AXIÓN: minijuegos diarios de matemáticas, física, electrónica, programación y mecánica.",
+  "version": "1.1.0",
+  "description": "Lord of Engineer: minijuegos diarios de matemáticas, física, electrónica, programación y mecánica.",
   "private": true,
   "scripts": {
     "serve": "python -m http.server 5173",
