@@ -144,7 +144,7 @@ const Screens = {
         <button class="btn ghost sm" id="voice-test">▶ Probar voz</button></section>
       <section class="card"><h3>Datos y privacidad</h3><p class="muted">Todo tu progreso se guarda solo en este dispositivo. No recopilamos datos personales.</p>
         <div class="row"><button class="btn ghost sm" id="export">⬇️ Exportar progreso</button><button class="btn ghost sm" id="import">⬆️ Importar</button><button class="btn ghost sm" id="reset" style="--ci:#c2410c">🗑 Borrar todo</button></div></section>
-      <section class="card"><h3>Actualizaciones</h3><p class="muted">Versión instalada: <b>${APP_VERSION}</b>. La app revisa si hay versiones nuevas al abrirse.</p><button class="btn ghost sm" id="upd">🔄 Buscar actualizaciones</button></section>
+      <section class="card"><h3>Actualizaciones</h3><p class="muted">Versión instalada: <b>${APP_VERSION}</b>. La app revisa si hay versiones nuevas al abrirse.</p><p class="muted" style="font-size:.85rem">${Updater.isApp() ? `Actualizaciones automáticas: <b>${Updater.ota ? 'activas ✓' : 'no disponibles'}</b> · APK ${esc(Updater.native || '—')} · Voz: <b>${Voice.native ? 'nativa ✓' : 'no disponible'}</b>` : 'Versión web (navegador).'}</p><button class="btn ghost sm" id="upd">🔄 Buscar actualizaciones</button></section>
       <p class="center muted" style="font-size:.8rem">Lord of Engineer v${APP_VERSION} · Complemento de estudio, no reemplaza el plan oficial de tu carrera.</p>`;
     const save = () => { Store.save(); Theme.apply(); Mascot.render(); note(); };
     const note = () => { const c = contrast(S().settings.accent, Theme.isDark() ? '#1d1b2d' : '#ffffff'); $('#contrast-note').textContent = `Contraste del color con el fondo: ${c.toFixed(1)}:1 ${c >= 3 ? '✓ buena visibilidad' : '⚠ bajo: los botones usarán texto oscuro'}`; };
@@ -374,6 +374,7 @@ document.addEventListener('pointerdown', () => { if (S().settings.music && !Musi
 
 /* ---------- arranque ---------- */
 Store.load(); Theme.apply(); Mascot.render(); Missions.ensure(); Router.go();
+Voice.init(); // prepara el motor de voz nativo desde el arranque
 Updater.init().then(() => setTimeout(() => Updater.check(false, true), 2000));
 // Tuerca te saluda al abrir la app con un resumen del día
 const greetBriefing = () => {

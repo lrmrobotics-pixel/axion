@@ -1,6 +1,6 @@
 {
   "name": "axion",
-  "version": "1.2.2",
+  "version": "1.2.3",
   "description": "Lord of Engineer: minijuegos diarios de matemáticas, física, electrónica, programación y mecánica.",
   "private": true,
   "scripts": {
