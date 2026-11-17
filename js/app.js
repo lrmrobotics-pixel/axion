@@ -316,9 +316,18 @@ const Updater = {
     // automático: al abrir y al volver a la app, como mucho cada 20 min; manual: siempre
     if (!manual && ($('.upd-offer') || (!cold && Date.now() - last < 20 * 60e3))) return; // al abrir desde cero busca siempre
     try {
-      const r = await fetch(`https://api.github.com/repos/${UPDATE_REPO}/releases/latest`, { headers: { Accept: 'application/vnd.github+json' } });
-      if (!r.ok) throw new Error(r.status);
-      const rel = await r.json(); lsSet('axion.updcheck', Date.now());
+      // 1) latest.json en raw.githubusercontent (sin límite de consultas); 2) respaldo: API de GitHub (60 por hora)
+      let rel = null;
+      try {
+        const m = await fetch(`https://raw.githubusercontent.com/${UPDATE_REPO}/main/latest.json?t=${Date.now()}`, { cache: 'no-store' });
+        if (m.ok) { const j = await m.json(); rel = { tag_name: 'v' + j.version, body: `${j.notes || ''}\n\nmin-native: ${j.minNative}`, assets: [j.zip && { name: `web-${j.version}.zip`, browser_download_url: j.zip }, j.apk && { name: j.apkName || 'app.apk', browser_download_url: j.apk }].filter(Boolean) }; }
+      } catch { rel = null; }
+      if (!rel) {
+        const r = await fetch(`https://api.github.com/repos/${UPDATE_REPO}/releases/latest`, { headers: { Accept: 'application/vnd.github+json' } });
+        if (!r.ok) throw new Error(r.status);
+        rel = await r.json();
+      }
+      lsSet('axion.updcheck', Date.now());
       const tag = rel.tag_name.replace(/^v/, '');
       if (!this.newer(tag, APP_VERSION)) { if (manual) toast(`✓ Tienes la última versión (${APP_VERSION})`); return; }
       const minNative = ((rel.body || '').match(/min-native:\s*(\d+\.\d+\.\d+)/) || [, tag])[1];

@@ -4,7 +4,7 @@
 'use strict';
 
 /* Versión de la app: la actualiza scripts/release.js */
-const APP_VERSION = '1.2.4';
+const APP_VERSION = '1.2.5';
 const UPDATE_REPO = 'lrmrobotics-pixel/axion-releases';
 
 /* ---------- utilidades ---------- */

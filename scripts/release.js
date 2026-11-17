@@ -68,6 +68,14 @@ console.log('Zip web en', zipPath);
 const body = `${notes}\n\nmin-native: ${nativeVersion}`;
 const notesFile = path.join(outDir, `notes-${version}.md`); fs.writeFileSync(notesFile, body);
 run(`gh release create v${version} "${zipPath}" "${apkPath}" --repo ${RELEASE_REPO} --title "Lord of Engineer ${version}" --notes-file "${notesFile}"`);
+// 5) manifiesto latest.json en el repo público (la app lo lee sin el límite de la API)
+const dl = (f) => `https://github.com/${RELEASE_REPO}/releases/download/v${version}/${path.basename(f)}`;
+const manifest = { version, minNative: nativeVersion, notes, zip: dl(zipPath), apk: dl(apkPath), apkName: path.basename(apkPath) };
+let sha = '';
+try { sha = execSync(`gh api repos/${RELEASE_REPO}/contents/latest.json --jq .sha`, { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }).trim(); } catch { sha = ''; }
+const reqFile = path.join(outDir, `manifest-${version}.json`);
+fs.writeFileSync(reqFile, JSON.stringify({ message: `latest.json ${version}`, content: Buffer.from(JSON.stringify(manifest, null, 2)).toString('base64'), ...(sha ? { sha } : {}) }));
+run(`gh api -X PUT repos/${RELEASE_REPO}/contents/latest.json --input "${reqFile}" --silent`);
 console.log(`Listo (${native ? 'APK nuevo + OTA' : 'OTA'}): https://github.com/${RELEASE_REPO}/releases/tag/v${version}`);
 
 /* ---- zip mínimo (deflate) sin dependencias ---- */
