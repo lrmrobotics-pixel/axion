@@ -138,10 +138,10 @@ const Screens = {
       <section class="card"><h3>🎙️ Voz de Tuerca</h3>
         ${sw('tts', 'Tuerca habla', 'Te acompaña en voz alta en cada sesión')}
         ${sw('voiceChatty', 'Modo conversación', 'También comenta aciertos y combos (si no, solo lo importante)')}
-        <div class="set-row" style="display:block"><label>Personalidad</label><div class="seg" role="group" aria-label="Personalidad de voz" style="margin-top:8px">${Object.entries(VOICE_PERSONAS).map(([k, v]) => `<button data-persona="${k}" aria-pressed="${st.voicePersona === k}">${v.name}</button>`).join('')}</div><small class="muted" id="persona-desc" style="display:block;margin-top:6px">${(VOICE_PERSONAS[st.voicePersona] || VOICE_PERSONAS.sereno).desc}</small></div>
-        <div class="set-row"><div><label for="set-voice">Voz del dispositivo</label><small>Las voces dependen de tu celular</small></div><select id="set-voice" style="max-width:180px;min-height:44px;border-radius:12px;border:2px solid var(--line);background:var(--surface2);color:var(--ink);font:inherit"><option value="">Automática</option></select></div>
+        <div class="set-row" style="display:block"><label>Personalidad</label><div class="seg" role="group" aria-label="Personalidad de voz" style="margin-top:8px">${Object.entries(VOICE_PERSONAS).map(([k, v]) => `<button data-persona="${k}" aria-pressed="${st.voicePersona === k}">${v.name}</button>`).join('')}</div><small class="muted" id="persona-desc" style="display:block;margin-top:6px">${(VOICE_PERSONAS[st.voicePersona] || VOICE_PERSONAS.cercana).desc}</small></div>
+        <div class="set-row" style="display:block"><label>Voz</label><small class="muted" style="display:block">✨ = natural (suena más humana, usa internet). Toca una para escucharla.</small><div id="voice-list" style="display:grid;gap:8px;margin-top:8px"><span class="muted">Cargando voces…</span></div></div>
         <div class="set-row"><div><label for="set-vrate">Velocidad</label><small id="vrate-l">${Math.round(st.voiceRate * 100)}%</small></div><input type="range" id="set-vrate" min=".7" max="1.4" step=".05" value="${st.voiceRate}" style="max-width:180px"></div>
-        <button class="btn ghost sm" id="voice-test">▶ Probar voz</button></section>
+        <div class="row"><button class="btn ghost sm" id="voice-test">▶ Probar voz</button>${Updater.isApp() ? '<button class="btn ghost sm" id="voice-install">⬇️ Más voces del sistema</button>' : ''}</div><p class="muted" id="voice-status" style="font-size:.85rem;margin:8px 0 0"></p></section>
       <section class="card"><h3>Datos y privacidad</h3><p class="muted">Todo tu progreso se guarda solo en este dispositivo. No recopilamos datos personales.</p>
         <div class="row"><button class="btn ghost sm" id="export">⬇️ Exportar progreso</button><button class="btn ghost sm" id="import">⬆️ Importar</button><button class="btn ghost sm" id="reset" style="--ci:#c2410c">🗑 Borrar todo</button></div></section>
       <section class="card"><h3>Actualizaciones</h3><p class="muted">Versión instalada: <b>${APP_VERSION}</b>. La app revisa si hay versiones nuevas al abrirse.</p><p class="muted" style="font-size:.85rem">${Updater.isApp() ? `Actualizaciones automáticas: <b>${Updater.ota ? 'activas ✓' : 'no disponibles'}</b> · APK ${esc(Updater.native || '—')} · Voz: <b>${Voice.native ? 'nativa ✓' : 'no disponible'}</b>` : 'Versión web (navegador).'}</p><button class="btn ghost sm" id="upd">🔄 Buscar actualizaciones</button></section>
@@ -156,10 +156,18 @@ const Screens = {
     $('#set-motion').onchange = (e) => { st.motion = e.target.checked ? 'reduce' : 'auto'; save(); };
     $$('[data-k]').forEach((i) => i.onchange = () => { st[i.dataset.k] = i.checked; save(); if (i.dataset.k === 'music') Music.sync(); if (i.dataset.k === 'sound' && i.checked) Sfx.play('ok'); if (i.dataset.k === 'haptics' && i.checked) buzz(40); if (i.dataset.k === 'tts') { if (i.checked) Voice.speak(`Hola, ${S().name}. Vuelvo a estar en línea.`); else Voice.stop(); } });
     $('#upd').onclick = () => Updater.check(true);
-    const vsel = $('#set-voice');
-    Voice.init().then(() => { Voice.spanish().forEach((v) => { const o = document.createElement('option'); o.value = v.voiceURI || v.name; o.textContent = `${v.name} (${v.lang})`; if (o.value === st.voiceName) o.selected = true; vsel.append(o); }); });
-    const test = () => Voice.speak(`Hola, ${S().name}. Soy Tuerca, tu asistente de ingeniería. Todos los sistemas en línea.`);
-    vsel.onchange = () => { st.voiceName = vsel.value; save(); test(); };
+    const vStatus = () => { const el = $('#voice-status'); if (el) el.textContent = `Motor de voz: ${Voice.status}${Voice.native ? ' (Android)' : ''} · ${Voice.spanish().length} voces en español${Voice.error ? ' · último error: ' + Voice.error : ''}`; };
+    const test = async () => { const ok = await Voice.speak(VOICE_PERSONAS[st.voicePersona].warm ? `¡Hola, ${S().name}! Soy Tuerca. Así sueno ahora, ¿te gusta?` : `Hola, ${S().name}. Soy Tuerca, tu asistente de laboratorio.`, { test: true }); vStatus(); if (!ok) toast('No pude hablar. Revisa el volumen multimedia o toca “Más voces del sistema”.', 4500); };
+    const renderVoices = () => {
+      const list = Voice.spanish(), box = $('#voice-list'); if (!box) return;
+      if (!list.length) { box.innerHTML = '<span class="muted">No encontré voces en español. Toca “Más voces del sistema” e instala Español.</span>'; vStatus(); return; }
+      const cur = Voice.pickVoice();
+      box.innerHTML = list.slice(0, 12).map((v, n) => `<button class="btn ${v === cur ? '' : 'ghost'} sm" data-voice="${esc(v.voiceURI || v.name)}" style="justify-content:flex-start;text-align:left">${v === cur ? '✓ ' : ''}${esc(Voice.label(v, n + 1))}</button>`).join('');
+      $$('[data-voice]', box).forEach((b) => b.onclick = () => { st.voiceName = b.dataset.voice; save(); renderVoices(); test(); });
+      vStatus();
+    };
+    Voice.init().then(renderVoices);
+    const vi = $('#voice-install'); if (vi) vi.onclick = () => { Voice.installVoices(); toast('Instala o actualiza “Español” en el motor de voz de Google y vuelve aquí.', 5000); };
     $$('[data-persona]').forEach((b) => b.onclick = () => { st.voicePersona = b.dataset.persona; $$('[data-persona]').forEach((x) => x.setAttribute('aria-pressed', x === b)); $('#persona-desc').textContent = VOICE_PERSONAS[st.voicePersona].desc; save(); test(); });
     $('#set-vrate').oninput = (e) => { st.voiceRate = +e.target.value; $('#vrate-l').textContent = Math.round(st.voiceRate * 100) + '%'; save(); };
     $('#set-vrate').onchange = test; $('#voice-test').onclick = test;

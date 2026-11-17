@@ -4,7 +4,7 @@
 'use strict';
 
 /* Versión de la app: la actualiza scripts/release.js */
-const APP_VERSION = '1.2.3';
+const APP_VERSION = '1.2.4';
 const UPDATE_REPO = 'lrmrobotics-pixel/axion-releases';
 
 /* ---------- utilidades ---------- */
@@ -33,7 +33,7 @@ const DEFAULT_STATE = () => ({
   created: Date.now(), name: '', onboarded: false,
   xp: 0, coins: 50, streak: 0, bestStreak: 0, lastDay: null, freezes: 0,
   totalCorrect: 0, totalAnswered: 0, sessions: 0, perfects: 0,
-  settings: { accent: '#7c5cff', mode: 'auto', sound: true, music: false, haptics: true, tts: true, voicePersona: 'sereno', voiceName: '', voiceRate: 1, voiceChatty: true, fontScale: 1, motion: 'auto' },
+  settings: { accent: '#7c5cff', mode: 'auto', sound: true, music: false, haptics: true, tts: true, voicePersona: 'cercana', voiceName: '', voiceRate: 1, voiceChatty: true, fontScale: 1, motion: 'auto' },
   mascot: { color: '#7c5cff', owned: ['c-morado'], head: null, face: null, neck: null },
   modules: {}, lessons: {}, badges: [], history: {}, mission: null, bestRelampago: 0, subjectsPlayed: [],
 });
@@ -47,6 +47,7 @@ const Store = {
     this.s.settings = Object.assign(DEFAULT_STATE().settings, (raw && raw.settings) || {});
     this.s.mascot = Object.assign(DEFAULT_STATE().mascot, (raw && raw.mascot) || {});
     if (!this.s.voiceV) { this.s.settings.tts = true; this.s.voiceV = 1; } // v1.2: la voz de asistente viene activada
+    if ((this.s.voiceV || 0) < 2) { const m = { sereno: 'cercana', agil: 'cercana' }; this.s.settings.voicePersona = m[this.s.settings.voicePersona] || this.s.settings.voicePersona || 'cercana'; this.s.settings.tts = true; this.s.voiceV = 2; } // v1.2.4: voces naturales
     return this.s;
   },
   save() { try { localStorage.setItem(KEY, JSON.stringify(this.s)); } catch { /* almacenamiento no disponible */ } },
@@ -183,13 +184,12 @@ const Music = {
   },
 };
 const buzz = (p = 15) => { if (S().settings.haptics && navigator.vibrate) { try { navigator.vibrate(p); } catch {} } };
-/* ---------- voz de Tuerca: asistente de IA ----------
-   En el APK usa el motor de voz nativo de Android (plugin TextToSpeech); en el navegador, Web Speech.
-   Personalidades: tono y velocidad sobre la voz en español que elijas del dispositivo. */
+/* ---------- voz de Tuerca ---------- */
 const VOICE_PERSONAS = {
-  sereno: { name: 'Sereno', desc: 'Grave y elegante, estilo mayordomo IA', pitch: .82, rate: .96, prefer: /male|hombre|masc|jorge|diego|pablo|enrique|carlos|juan|alvaro|-esd|-ese|#male/i },
-  agil: { name: 'Ágil', desc: 'Clara y rápida, estilo copiloto IA', pitch: 1.06, rate: 1.06, prefer: /female|mujer|fem|helena|laura|monica|paulina|sabina|elvira|dalia|-eea|-eee|#female/i },
-  clasico: { name: 'Robot clásico', desc: 'Agudo y simpático', pitch: 1.45, rate: 1.08, prefer: null },
+  cercana: { name: 'Cercana', desc: 'Natural y cálida, como una amiga que te explica', pitch: 1.0, rate: 1.0, warm: true },
+  calido: { name: 'Cálido', desc: 'Tranquilo y paciente, como un buen profe', pitch: 0.95, rate: 0.95, warm: true },
+  asistente: { name: 'Asistente IA', desc: 'Sereno y preciso, estilo asistente de laboratorio', pitch: 0.9, rate: 1.0, warm: false },
+  clasico: { name: 'Robot clásico', desc: 'Agudo y simpático', pitch: 1.4, rate: 1.08, warm: true },
 };
 const SPEAK_FIX = [
   [/d\/dx/g, ' la derivada de '], [/×|·/g, ' por '], [/÷/g, ' entre '], [/−/g, ' menos '], [/²/g, ' al cuadrado'], [/³/g, ' al cubo'], [/√/g, ' raíz de '],
@@ -198,33 +198,46 @@ const SPEAK_FIX = [
   [/%/g, ' por ciento'], [/(\d)\/(\d)/g, '$1 sobre $2'], [/\bf'\(/g, 'f prima de ('], [/\bmA\b/g, ' miliamperios'], [/\bkΩ\b/g, ' kilo ohmios'],
   [/\brpm\b/g, ' revoluciones por minuto'], [/\bm\/s\b/g, ' metros por segundo'], [/\bXP\b/g, ' puntos de experiencia'], [/¬/g, ' no '],
 ];
+const REGION = { US: 'Latinoamérica', MX: 'México', CO: 'Colombia', 419: 'Latinoamérica', AR: 'Argentina', CL: 'Chile', PE: 'Perú', ES: 'España' };
+/* Motor de voz. En el APK usa el TTS de Android (plugin), que tarda en arrancar: se reintenta en vez de rendirse.
+   En el navegador usa Web Speech. Prefiere voces latinoamericanas y "naturales" (las que usan internet suenan menos robóticas). */
 const Voice = {
-  native: null, voices: [], ready: null, last: 0,
-  init() {
-    if (this.ready) return this.ready;
+  native: null, voices: [], ready: null, last: 0, status: 'iniciando', error: '',
+  isApp: () => !!(window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform()),
+  wait: (ms) => new Promise((r) => setTimeout(r, ms)),
+  init(force = false) {
+    if (this.ready && !force) return this.ready;
     this.ready = (async () => {
-      try {
-        const C = window.Capacitor;
-        if (C && C.isNativePlatform && C.isNativePlatform() && C.registerPlugin) {
-          this.native = C.registerPlugin('TextToSpeech');
-          this.voices = ((await this.native.getSupportedVoices()).voices || []).map((v, i) => ({ ...v, i }));
-          return;
+      if (this.isApp() && window.Capacitor.registerPlugin) {
+        if (!this.native) this.native = window.Capacitor.registerPlugin('TextToSpeech');
+        for (let i = 0; i < 12; i++) { // el motor de Android puede tardar unos segundos
+          try { this.voices = ((await this.native.getSupportedVoices()).voices || []).map((v, k) => ({ ...v, i: k })); this.status = 'lista'; this.error = ''; return; }
+          catch (e) { this.error = String((e && e.message) || e); this.status = 'esperando el motor de voz'; await this.wait(700); }
         }
-      } catch { this.native = null; }
-      if ('speechSynthesis' in window) {
-        const load = () => (this.voices = speechSynthesis.getVoices().map((v, i) => ({ name: v.name, lang: v.lang, voiceURI: v.voiceURI, i, ref: v })));
-        load(); if (!this.voices.length) await new Promise((r) => { speechSynthesis.onvoiceschanged = () => { load(); r(); }; setTimeout(r, 1500); });
+        this.status = 'sin motor de voz'; return;
       }
+      if ('speechSynthesis' in window) {
+        const load = () => (this.voices = speechSynthesis.getVoices().map((v, i) => ({ name: v.name, lang: v.lang, voiceURI: v.voiceURI, localService: v.localService, i, ref: v })));
+        load(); if (!this.voices.length) await new Promise((r) => { speechSynthesis.onvoiceschanged = () => { load(); r(); }; setTimeout(r, 1500); });
+        this.status = 'lista';
+      } else this.status = 'sin voz en este navegador';
     })();
     return this.ready;
   },
-  spanish() { const es = this.voices.filter((v) => /^es/i.test(v.lang)); return es.length ? es : this.voices; },
+  spanish() {
+    const es = this.voices.filter((v) => /^es/i.test(v.lang));
+    const score = (v) => (/(US|MX|CO|419)/i.test(v.lang) ? 4 : /ES/i.test(v.lang) ? 1 : 2) + (v.localService === false || /network|online|natural|neural/i.test(v.voiceURI || v.name) ? 3 : 0);
+    return (es.length ? es : this.voices).slice().sort((x, y) => score(y) - score(x));
+  },
+  label(v, n) {
+    const reg = (v.lang || '').split('-')[1] || '';
+    const natural = v.localService === false || /network|online|natural|neural/i.test(v.voiceURI || v.name);
+    const code = ((v.voiceURI || '').match(/-x-([a-z]+)/) || [])[1];
+    return `${natural ? '✨ ' : ''}Voz ${n} · ${REGION[reg.toUpperCase()] || v.lang}${natural ? ' · natural (usa internet)' : ' · sin internet'}${code ? ` (${code})` : ''}`;
+  },
   pickVoice() {
     const st = S().settings, list = this.spanish(); if (!list.length) return null;
-    const chosen = list.find((v) => (v.voiceURI || v.name) === st.voiceName); if (chosen) return chosen;
-    const P = VOICE_PERSONAS[st.voicePersona] || VOICE_PERSONAS.sereno;
-    const local = list.filter((v) => /es[-_](CO|MX|US|419)/i.test(v.lang));
-    return (P.prefer && (local.find((v) => P.prefer.test(v.name + ' ' + (v.voiceURI || ''))) || list.find((v) => P.prefer.test(v.name + ' ' + (v.voiceURI || ''))))) || local[0] || list[0];
+    return list.find((v) => (v.voiceURI || v.name) === st.voiceName) || list[0];
   },
   clean(text) {
     let t = String(text).replace(/<[^>]+>/g, ' ');
@@ -232,32 +245,56 @@ const Voice = {
     return t.replace(/[^\p{L}\p{N}\s.,;:¡!¿?()+\-]/gu, ' ').replace(/\s+/g, ' ').trim();
   },
   // important: las frases clave suenan aunque el modo conversación esté en "solo lo importante"
-  async speak(text, { important = true } = {}) {
-    const st = S().settings; if (!st.tts || !text) return;
-    if (!important && !st.voiceChatty) return;
+  async speak(text, { important = true, test = false } = {}) {
+    const st = S().settings; if ((!st.tts && !test) || !text) return false;
+    if (!important && !st.voiceChatty) return false;
     await this.init();
-    const P = VOICE_PERSONAS[st.voicePersona] || VOICE_PERSONAS.sereno, v = this.pickVoice(), say = this.clean(text);
+    if (this.native && !this.voices.length) await this.init(true);
+    const P = VOICE_PERSONAS[st.voicePersona] || VOICE_PERSONAS.cercana, v = this.pickVoice(), say = this.clean(text);
     const rate = P.rate * (st.voiceRate || 1); this.last = Date.now();
-    try {
-      if (this.native) await this.native.speak({ text: say, lang: (v && v.lang) || 'es-ES', rate, pitch: P.pitch, volume: 1, voice: v ? v.i : undefined, queueStrategy: 0, category: 'ambient' });
-      else if ('speechSynthesis' in window) {
-        speechSynthesis.cancel(); const u = new SpeechSynthesisUtterance(say);
-        u.lang = (v && v.lang) || 'es-ES'; u.rate = rate; u.pitch = P.pitch; if (v && v.ref) u.voice = v.ref; speechSynthesis.speak(u);
+    if (this.native) {
+      const langs = [...new Set([v && v.lang, 'es-US', 'es-MX', 'es-ES', 'es'].filter(Boolean))];
+      for (let attempt = 0; attempt < 3; attempt++) {
+        for (const lang of langs) {
+          try {
+            this.native.speak({ text: say, lang, rate, pitch: P.pitch, volume: 1, voice: v && v.lang === lang ? v.i : -1, queueStrategy: 0 })
+              .catch((e) => { this.error = String((e && e.message) || e); });
+            await this.wait(150); // da tiempo a que Android rechace si el idioma no está disponible
+            if (/not supported/i.test(this.error)) { this.error = ''; continue; }
+            if (/initialized|not available/i.test(this.error)) break;
+            this.status = 'lista'; return true;
+          } catch (e) { this.error = String((e && e.message) || e); }
+        }
+        await this.wait(800); this.error = '';
       }
-    } catch {}
+      return false;
+    }
+    if ('speechSynthesis' in window) {
+      try {
+        speechSynthesis.cancel(); const u = new SpeechSynthesisUtterance(say);
+        u.lang = (v && v.lang) || 'es-ES'; u.rate = rate; u.pitch = P.pitch; if (v && v.ref) u.voice = v.ref; speechSynthesis.speak(u); return true;
+      } catch (e) { this.error = String(e); }
+    }
+    return false;
   },
   stop() { try { if (this.native) this.native.stop(); else if ('speechSynthesis' in window) speechSynthesis.cancel(); } catch {} },
+  installVoices() { try { if (this.native && this.native.openInstall) this.native.openInstall(); } catch {} },
 };
 
-/* Frases de Tuerca como asistente que te acompaña */
+/* Frases de Tuerca: cálidas por defecto; la personalidad "Asistente IA" habla como asistente de laboratorio */
+const warm = () => (VOICE_PERSONAS[S().settings.voicePersona] || VOICE_PERSONAS.cercana).warm;
 const COMPANION = {
-  greet: (n, extra) => pick([`Bienvenido de vuelta, ${n}. Sistemas en línea.`, `Hola, ${n}. Todo listo para entrenar.`, `${n}, qué gusto verte. Laboratorio preparado.`]) + (extra ? ' ' + extra : ''),
-  start: (g, d) => pick([`Iniciando ${g}. Nivel ${d}. Cuando quieras.`, `Cargando ${g}, dificultad ${d}. Vamos allá.`, `${g} en marcha. Nivel ${d}. Confío en ti.`]),
-  ok: () => pick(['Correcto.', 'Impecable.', 'Cálculo verificado.', 'Exacto.', 'Excelente precisión.', 'Bien hecho.', 'Así se hace.']),
-  combo: (n) => pick([`Racha de ${n}. Rendimiento excepcional.`, `${n} seguidas. Estás en modo turbo.`, `Combo de ${n}. Impresionante.`]),
-  up: (d) => pick([`Subiendo la dificultad a nivel ${d}. Lo estás haciendo muy bien.`, `Nivel ${d}. Veamos de qué eres capaz.`]),
-  down: () => 'Bajo un poco la dificultad para que afiances la base.',
-  end: (n, c, t, stars) => (stars === 3 ? `Sesión perfecta, ${n}. ${c} de ${t}. Brillante.` : stars === 2 ? `Sesión completada. ${c} de ${t} correctas. Muy buen trabajo, ${n}.` : stars === 1 ? `Sesión completada con ${c} de ${t}. Lo repasaremos pronto para afianzarlo.` : `Sesión terminada. Cada intento te hace más fuerte, ${n}. Volveremos a este tema pronto.`),
+  greet: (n, extra) => (warm()
+    ? pick([`¡Hola, ${n}! Qué bueno verte.`, `¡Hey, ${n}! ¿Aprendemos algo nuevo hoy?`, `¡${n}! Te estaba esperando.`])
+    : pick([`Bienvenido de vuelta, ${n}. Sistemas en línea.`, `Hola, ${n}. Todo listo para entrenar.`])) + (extra ? ' ' + extra : ''),
+  start: (g, d) => (warm() ? pick([`Vamos con ${g}. ¡Tú puedes!`, `¡A darle a ${g}! Nivel ${d}.`, `${g}. Respira, piensa y adelante.`]) : pick([`Iniciando ${g}. Nivel ${d}.`, `Cargando ${g}, dificultad ${d}.`])),
+  ok: () => (warm() ? pick(['¡Muy bien!', '¡Eso es!', '¡Así se hace!', '¡Genial!', '¡Perfecto!', '¡Qué crack!', '¡Bien pensado!']) : pick(['Correcto.', 'Impecable.', 'Cálculo verificado.', 'Exacto.'])),
+  combo: (n) => (warm() ? pick([`¡${n} seguidas! Estás que vuelas.`, `¡Vas en racha: ${n} seguidas!`, `¡${n} al hilo! Me encanta.`]) : pick([`Racha de ${n}. Rendimiento excepcional.`, `Combo de ${n}.`])),
+  up: (d) => (warm() ? `Lo estás haciendo tan bien que subo al nivel ${d}.` : `Subiendo la dificultad a nivel ${d}.`),
+  down: () => (warm() ? 'Tranqui, bajemos un poquito el nivel para practicar la base.' : 'Bajo la dificultad para afianzar la base.'),
+  end: (n, c, t, stars) => (warm()
+    ? (stars === 3 ? `¡Perfecto, ${n}! ${c} de ${t}. Estoy orgulloso de ti.` : stars === 2 ? `¡Muy bien, ${n}! ${c} de ${t}. Ya casi lo dominas.` : stars === 1 ? `Buen trabajo, ${n}. ${c} de ${t}. Lo repasamos pronto y te va a salir.` : `No pasa nada, ${n}. Equivocarse es parte de aprender. Lo vemos otra vez pronto.`)
+    : (stars === 3 ? `Sesión perfecta, ${n}. ${c} de ${t}.` : `Sesión completada. ${c} de ${t} correctas.`)),
 };
 
 /* ---------- mascota: Tuerca ---------- */
