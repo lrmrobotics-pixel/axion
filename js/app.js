@@ -2,7 +2,7 @@
 'use strict';
 
 const ACCENTS = [['#ef4444', 'Rojo'], ['#2f7df6', 'Azul'], ['#10a37a', 'Verde'], ['#7c5cff', 'Morado'], ['#ff7a2f', 'Naranja'], ['#ec4899', 'Rosa'], ['#0891b2', 'Cian']];
-const ROUTE_ORDER = ['relampago', 'fracciones', 'potencias', 'balanza', 'graficador', 'circulo', 'derivada', 'vectores', 'proyectil', 'ohm', 'logica', 'bugs', 'robot', 'palanca', 'engranajes', 'pid'];
+const ROUTE_ORDER = ['relampago', 'fracciones', 'potencias', 'balanza', 'graficador', 'circulo', 'derivada', 'riemann', 'matrices', 'vectores', 'proyectil', 'ohm', 'logica', 'bugs', 'robot', 'palanca', 'engranajes', 'pid'];
 const gameById = (id) => GAMES.find((g) => g.id === id);
 
 /* ---------- recomendación adaptativa ---------- */
@@ -66,6 +66,7 @@ const Screens = {
         <p style="margin:0 0 6px;font-weight:800">Nivel ${lvl} · ${titleOf(lvl)}</p>
         <div class="xpbar" role="progressbar" aria-valuenow="${pct}" aria-valuemin="0" aria-valuemax="100" aria-label="Progreso de nivel"><i style="width:${pct}%"></i></div>
         <p class="muted" style="margin:4px 0 0;font-size:.8rem;font-weight:700">${s.xp - xpFor(lvl)} / ${xpFor(lvl + 1) - xpFor(lvl)} XP para el nivel ${lvl + 1}</p></div></section>
+      ${(() => { const cur = Kingdom.current(), kp = Kingdom.state().pieces.length; return `<section class="card realm-card" style="--rc:${cur ? cur.color : '#d4a017'}"><div class="row"><div style="width:64px">${mascotSVG('happy')}</div><div class="grow"><b>⚔️ El Reino del Ingeniero · ${kp}/6 piezas</b><p class="muted" style="margin:0">${cur ? `Región actual: ${cur.icon} ${cur.name} (${Kingdom.progress(cur).d}/${cur.missions.length} misiones)` : '👑 ¡Eres Lord of Engineer!'}</p></div></div><button class="btn block" data-go="#/reino" style="margin-top:10px">${cur && Kingdom.bossReady(cur) && !Kingdom.state().bosses[cur.id] ? `⚔️ ¡${cur.boss.icon} ${cur.boss.name} te espera!` : '🗺️ Ir al Reino'}</button></section>`; })()}
       ${(() => { const nl = Learn.next(), dn = LESSONS.filter((l) => Learn.rec(l.id)).length; return `<section class="card"><div class="row"><span style="font-size:2rem">📚</span><div class="grow"><b>Academia · ${dn}/${LESSONS.length} lecciones</b><p class="muted" style="margin:0">${nl ? `Siguiente: ${nl.icon} ${esc(nl.title)}` : '¡Todas completadas! Repasa en tu cuaderno.'}</p></div></div><div class="row" style="margin-top:10px">${nl ? `<button class="btn grow" data-go="#/lesson/${nl.id}">▶ Aprender</button>` : ''}<button class="btn ghost sm" data-go="#/pizarra">✍️ Pizarra</button><button class="btn ghost sm" data-go="#/notebook">📒 Cuaderno</button></div></section>`; })()}
       <section class="card mission"><div class="row"><h2 style="margin:0">🎯 Misión del día</h2><span class="grow"></span><span style="font-weight:800">+60 🔩 +40 XP</span></div>
         ${m.items.map((it) => `<div class="mission-item ${it.p >= it.n ? 'done' : ''}"><span class="chk">${it.p >= it.n ? '✓' : ''}</span>${esc(it.label)}<span class="prog">${it.p}/${it.n}</span></div>`).join('')}
@@ -110,7 +111,7 @@ const Screens = {
     const days = Array.from({ length: 7 }, (_, i) => { const dt = new Date(Date.now() - (6 - i) * DAY); return { l: 'DLMMJVS'[dt.getDay()], v: s.history[dayKey(dt)] || 0 }; }); const mx = Math.max(20, ...days.map((d) => d.v));
     const acc = s.totalAnswered ? Math.round(s.totalCorrect / s.totalAnswered * 100) : 0;
     $('#main').innerHTML = `<section class="card center"><div style="width:150px;margin:0 auto">${mascotSVG('happy')}</div><h1>${esc(s.name)}</h1><p style="font-weight:800">Nivel ${lvl} · ${titleOf(lvl)}</p>
-        <div class="row" style="justify-content:center"><button class="btn sm ghost" data-go="#/shop">🎨 Personalizar a Tuerca</button><button class="btn sm ghost" id="rename">✏️ Cambiar apodo</button><button class="btn sm ghost" data-go="#/settings">⚙️ Ajustes</button></div></section>
+        <div class="row" style="justify-content:center"><button class="btn sm ghost" data-go="#/shop">🎨 Personalizar a Tuerca</button><button class="btn sm ghost" id="rename">✏️ Cambiar apodo</button><button class="btn sm ghost" data-go="#/settings">⚙️ Ajustes</button>${Kingdom.state().pieces.length ? `<button class="btn sm ghost" id="armor-t">${S().mascot.armor === false ? '🛡️ Mostrar armadura' : '🛡️ Ocultar armadura'}</button>` : ''}</div></section>
       <section class="card"><h3>Estadísticas</h3><div class="stats">
         <div class="stat"><b>${s.xp}</b><span>XP total</span></div><div class="stat"><b>${Progress.streakNow()} 🔥</b><span>Racha actual</span></div>
         <div class="stat"><b>${s.bestStreak}</b><span>Mejor racha</span></div><div class="stat"><b>${s.sessions}</b><span>Sesiones</span></div>
@@ -119,6 +120,7 @@ const Screens = {
       <section class="card"><h3>XP esta semana</h3><div class="chart">${days.map((d) => `<div class="c"><span>${d.v || ''}</span><i style="height:${(d.v / mx) * 85}%"></i>${d.l}</div>`).join('')}</div></section>
       <section class="card"><h3>Insignias (${s.badges.length}/${BADGES.length})</h3><div class="badges">${BADGES.map((b) => `<div class="badge ${s.badges.includes(b.id) ? '' : 'locked'}" title="${esc(b.desc)}"><span class="e">${b.e}</span>${b.name}<br><span class="muted" style="font-weight:600">${b.desc}</span></div>`).join('')}</div></section>
       <section class="card"><h3>Dominio por tema</h3>${GAMES.map((g) => { const r = SRS.get(g.id); return `<div class="row" style="margin-bottom:8px"><span style="width:28px">${g.icon}</span><span class="grow" style="font-weight:700">${g.name}</span><span class="muted" style="font-size:.8rem;font-weight:800">Nv ${r.level}</span><div class="xpbar" style="width:90px;height:10px"><i style="width:${r.mastery}%"></i></div></div>`; }).join('')}</section>`;
+    const at = $('#armor-t'); if (at) at.onclick = () => { S().mascot.armor = S().mascot.armor === false; Store.save(); Mascot.render(); Screens.profile(); };
     $('#rename').onclick = () => { const n = prompt('Nuevo apodo', s.name); if (n && n.trim()) { s.name = n.trim().slice(0, 20); Store.save(); Screens.profile(); } };
   },
 
@@ -372,12 +374,14 @@ const Router = {
     Runner.stop(); window.scrollTo(0, 0);
     const [, a, b] = h.split('/');
     const g = a === 'play' && gameById(b);
-    if (a !== 'lesson') Music.setTheme(g ? (g.id === 'relampago' ? 'rush' : g.subj) : a === 'subject' && MUSIC_THEMES[b] ? b : 'menu');
+    if (a !== 'lesson' && a !== 'boss') Music.setTheme(g ? (g.id === 'relampago' ? 'rush' : g.subj) : a === 'subject' && MUSIC_THEMES[b] ? b : 'menu');
     if (g) Runner.start(g);
     else if (a === 'academy') Learn.academy();
     else if (a === 'lesson') Learn.lesson(b);
     else if (a === 'pizarra') Learn.pizarra(decodeURIComponent(b || ''));
     else if (a === 'notebook') Learn.notebook();
+    else if (a === 'reino') Kingdom.map();
+    else if (a === 'boss') Kingdom.boss(b);
     else if (a === 'subject') Screens.subject(b);
     else if (Screens[a] && a !== 'onboarding') Screens[a]();
     else Screens.home();

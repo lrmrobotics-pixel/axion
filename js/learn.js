@@ -16,6 +16,7 @@ const MathX = {
       if (c === ' ') { i++; continue; }
       if (/[\d.]/.test(c)) { let j = i; while (j < s.length && /[\d.]/.test(s[j])) j++; const v = parseFloat(s.slice(i, j)); if (!Number.isFinite(v)) throw new Error('num'); out.push({ k: 'n', v }); i = j; continue; }
       if (c === 'x') { out.push({ k: 'x' }); i++; continue; }
+      if (c === 'y') { out.push({ k: 'y' }); i++; continue; }
       if (c === 'p') { out.push({ k: 'n', v: Math.PI, pi: true }); i++; continue; }
       if (c === 'r') { out.push({ k: 'r' }); i++; continue; }
       if ('+-*/^()='.includes(c)) { out.push({ k: c }); i++; continue; }
@@ -23,7 +24,7 @@ const MathX = {
     }
     // multiplicación implícita: 2x, 3(…), )(, x(…), 2√9
     const t = [];
-    out.forEach((tk, j) => { const p = t[t.length - 1]; if (p && (p.k === 'n' || p.k === 'x' || p.k === ')') && (tk.k === 'x' || tk.k === '(' || tk.k === 'r' || (tk.k === 'n' && p.k !== 'n'))) t.push({ k: '*', implicit: true }); t.push(tk); });
+    out.forEach((tk, j) => { const p = t[t.length - 1]; if (p && (p.k === 'n' || p.k === 'x' || p.k === 'y' || p.k === ')') && (tk.k === 'x' || tk.k === 'y' || tk.k === '(' || tk.k === 'r' || (tk.k === 'n' && p.k !== 'n'))) t.push({ k: '*', implicit: true }); t.push(tk); });
     return t;
   },
   parse(src) {
@@ -37,6 +38,7 @@ const MathX = {
       const tk = peek(); if (!tk) throw new Error('fin');
       if (tk.k === 'n') { i++; return { k: 'n', v: tk.v, pi: tk.pi }; }
       if (tk.k === 'x') { i++; return { k: 'x' }; }
+      if (tk.k === 'y') { i++; return { k: 'y' }; }
       if (tk.k === 'r') { i++; return { k: 'sqrt', e: power() }; }
       if (tk.k === '(') { i++; const e = expr(); eat(')'); e.par = true; return e; }
       throw new Error('inesperado ' + tk.k);
@@ -49,6 +51,7 @@ const MathX = {
     switch (n.k) {
       case 'n': return n.v;
       case 'x': if (x === undefined) throw new Error('x'); return x;
+      case 'y': if (this._y === undefined) throw new Error('y'); return this._y;
       case 'neg': return -this.eval(n.e, x);
       case 'sqrt': return Math.sqrt(this.eval(n.e, x));
       case 'op': { const a = this.eval(n.l, x), b = this.eval(n.r, x); return n.o === '+' ? a + b : n.o === '-' ? a - b : n.o === '*' ? a * b : n.o === '/' ? a / b : a ** b; }
@@ -66,10 +69,10 @@ const MathX = {
     const SYM = { '+': '+', '-': '−', '*': '×', '/': '÷', '^': '^' };
     let s;
     if (n.k === 'n') s = n.pi ? 'π' : (n.v < 0 && !top ? `(${this.num(n.v)})` : this.num(n.v));
-    else if (n.k === 'x') s = 'x';
+    else if (n.k === 'x' || n.k === 'y') s = n.k;
     else if (n.k === 'neg') s = `−${this.str(n.e, false)}`;
     else if (n.k === 'sqrt') s = `√${this.str(n.e, false)}`;
-    else if (n.o === '*' && n.l.k === 'n' && !n.l.pi && (n.r.k === 'x' || (n.r.par && n.r.k !== 'n'))) s = `${this.str(n.l, false)}${this.str(n.r, false)}`; // 2x, 3(x + 2)
+    else if (n.o === '*' && n.l.k === 'n' && !n.l.pi && (n.r.k === 'x' || n.r.k === 'y' || (n.r.par && n.r.k !== 'n'))) s = `${this.str(n.l, false)}${this.str(n.r, false)}`; // 2x, 3(x + 2)
     else s = n.o === '^' ? `${this.str(n.l, false)}^${this.str(n.r, false)}` : `${this.str(n.l, false)} ${SYM[n.o]} ${this.str(n.r, false)}`;
     return n.par && n.k !== 'n' ? `(${s})` : s;
   },
@@ -142,7 +145,69 @@ const MathX = {
     steps.push({ expr: `x = ${this.num(x)}${this.frac(x) ? ` (= ${this.frac(x)})` : ''}`, msg: `Comprobación: con x = ${this.num(x)}, el lado izquierdo da ${this.num(lv)} y el derecho ${this.num(rv)}. ${Math.abs(lv - rv) < 1e-6 ? '✓ ¡Coinciden!' : ''}` });
     return { steps, result: x };
   },
+  // forma lineal con dos incógnitas: a·x + c·y + b
+  linear2(n) {
+    switch (n.k) {
+      case 'n': return { a: 0, c: 0, b: n.v };
+      case 'x': return { a: 1, c: 0, b: 0 };
+      case 'y': return { a: 0, c: 1, b: 0 };
+      case 'neg': { const e = this.linear2(n.e); return { a: -e.a, c: -e.c, b: -e.b }; }
+      case 'sqrt': { const e = this.linear2(n.e); if (e.a || e.c) throw new Error('nolin'); return { a: 0, c: 0, b: Math.sqrt(e.b) }; }
+      case 'op': {
+        const L = this.linear2(n.l), R = this.linear2(n.r), vL = L.a || L.c, vR = R.a || R.c;
+        if (n.o === '+') return { a: L.a + R.a, c: L.c + R.c, b: L.b + R.b };
+        if (n.o === '-') return { a: L.a - R.a, c: L.c - R.c, b: L.b - R.b };
+        if (n.o === '*') { if (vL && vR) throw new Error('nolin'); const [V, k] = vL ? [L, R.b] : [R, L.b]; return { a: V.a * k, c: V.c * k, b: V.b * k }; }
+        if (n.o === '/') { if (vR) throw new Error('nolin'); return { a: L.a / R.b, c: L.c / R.b, b: L.b / R.b }; }
+        if (n.o === '^') { if (vL || vR) throw new Error('nolin'); return { a: 0, c: 0, b: L.b ** R.b }; }
+      }
+    }
+    throw new Error('nodo');
+  },
+  lin3(a, c, d) {
+    const term = (k, v, first) => { if (!k) return ''; const m = Math.abs(k) === 1 ? v : `${this.num(Math.abs(k))}${v}`; return first ? (k < 0 ? '−' + m : m) : ` ${k < 0 ? '−' : '+'} ${m}`; };
+    const left = (term(a, 'x', true) + term(c, 'y', !a)) || '0';
+    return `${left} = ${this.num(d)}`;
+  },
+  // sistema 2×2 por eliminación, explicado paso a paso
+  systemSteps(e1, e2) {
+    const norm = ([L, R]) => { const l = this.linear2(L), r = this.linear2(R); return { a: l.a - r.a, c: l.c - r.c, d: r.b - l.b, L, R }; };
+    const E1 = norm(e1), E2 = norm(e2), steps = [];
+    steps.push({ expr: `${this.str(e1[0])} = ${this.str(e1[1])}   ;   ${this.str(e2[0])} = ${this.str(e2[1])}`, msg: 'Sistema de dos ecuaciones. Meta: encontrar x e y que cumplan las dos a la vez.' });
+    steps.push({ expr: `(1) ${this.lin3(E1.a, E1.c, E1.d)}   ;   (2) ${this.lin3(E2.a, E2.c, E2.d)}`, msg: 'Ordena cada ecuación como ax + by = c (las incógnitas a la izquierda, los números a la derecha).' });
+    const det = E1.a * E2.c - E2.a * E1.c;
+    if (Math.abs(det) < 1e-12) {
+      const prop = E1.a * E2.d - E2.a * E1.d === 0 && E1.c * E2.d - E2.c * E1.d === 0;
+      steps.push({ expr: 'Las rectas son paralelas', msg: prop ? 'Las dos ecuaciones son la misma recta: hay infinitas soluciones.' : 'Las rectas nunca se cruzan: el sistema no tiene solución.' });
+      return { steps, result: NaN };
+    }
+    let y;
+    if (E1.a === 0 || E2.a === 0) {
+      const E = E1.a === 0 ? E1 : E2; y = E.d / E.c;
+      steps.push({ expr: `y = ${this.num(E.d)} ÷ ${this.num(E.c)} = ${this.num(y)}`, msg: `La ecuación (${E === E1 ? 1 : 2}) no tiene x: despeja y directamente.` });
+    } else {
+      const k1 = E2.a, k2 = E1.a, c = E1.c * k1 - E2.c * k2, d = E1.d * k1 - E2.d * k2;
+      const mul = (k) => (k < 0 ? `×(${this.num(k)})` : `×${this.num(k)}`);
+      if (k1 !== 1 || k2 !== 1) steps.push({ expr: `(1)${mul(k1)}: ${this.lin3(E1.a * k1, E1.c * k1, E1.d * k1)}   ;   (2)${mul(k2)}: ${this.lin3(E2.a * k2, E2.c * k2, E2.d * k2)}`, msg: `Multiplica la (1) por ${this.num(k1)} y la (2) por ${this.num(k2)} para que la x tenga el mismo número en las dos.` });
+      steps.push({ expr: `${this.lin3(0, c, d)}`, msg: 'Resta una ecuación de la otra: las x se eliminan y queda solo la y.' });
+      y = d / c;
+      steps.push({ expr: `y = ${this.num(d)} ÷ ${this.num(c)} = ${this.num(y)}`, msg: `Divide entre ${this.num(c)} para despejar y.` });
+    }
+    const E = E1.a !== 0 ? E1 : E2, rest = E.d - E.c * y, x = rest / E.a;
+    const cx = E.a === 1 ? 'x' : E.a === -1 ? '−x' : `${this.num(E.a)}x`, cy = `${E.c < 0 ? '−' : '+'} ${Math.abs(E.c) === 1 ? '' : this.num(Math.abs(E.c)) + '·'}(${this.num(y)})`;
+    steps.push({ expr: `${cx} ${cy} = ${this.num(E.d)}  →  x = ${E.a === 1 ? this.num(x) : `${this.num(rest)} ÷ ${this.num(E.a)} = ${this.num(x)}`}`, msg: `Sustituye y = ${this.num(y)} en la ecuación (${E === E1 ? 1 : 2}) y despeja x.` });
+    this._y = y; const c1 = Math.abs(this.eval(e1[0], x) - this.eval(e1[1], x)) < 1e-6, c2 = Math.abs(this.eval(e2[0], x) - this.eval(e2[1], x)) < 1e-6; this._y = undefined;
+    steps.push({ expr: `x = ${this.num(x)}   ,   y = ${this.num(y)}`, msg: `Comprobación en las dos ecuaciones: ${c1 && c2 ? '✓ ¡las dos se cumplen!' : 'revisa los datos.'}` });
+    return { steps, result: x, y };
+  },
   solve(src) {
+    const parts = String(src).split(/[;\n]/).map((t) => t.trim()).filter(Boolean);
+    if (parts.length === 2) {
+      const e1 = this.parse(parts[0]), e2 = this.parse(parts[1]);
+      if (e1.length !== 2 || e2.length !== 2) throw new Error('falta =');
+      return { kind: 'sys', ...this.systemSteps(e1, e2) };
+    }
+    if (/y/i.test(src)) throw new Error('y sola');
     const sides = this.parse(src);
     if (sides.length === 2) return { kind: 'eq', ...this.equationSteps(sides[0], sides[1]) };
     if (JSON.stringify(sides[0]).includes('"k":"x"')) throw new Error('falta =');
@@ -334,6 +399,35 @@ const WIDGETS = {
       $('#w-gr-r', el).innerHTML = `<span>relación = ${n2}/${n1} = ${fmt(n2 / n1, 2)}</span><span>salida = ${w1}·${n1}/${n2} = <b>${fmt(w2, 1)} rpm</b></span><span>fuerza de giro ×${fmt(n2 / n1, 2)}</span>`;
     });
   },
+  riemann(el) {
+    el.innerHTML = `${svgNS('0 0 300 190', '', 'id="w-rm"')}<div class="readout" id="w-rm-r"></div><div class="controls">${slider('w-rn', 'rectángulos', 1, 40, 1, 4)}</div>`;
+    bindSliders(el, ['w-rn'], () => {
+      const n = val(el, 'w-rn'), f = (x) => x * x, A = 0, B = 2, X = (x) => 25 + x * 120, Y = (y) => 170 - y * 36, dx = (B - A) / n; let sum = 0, rects = '';
+      for (let i = 0; i < n; i++) { const xm = A + (i + .5) * dx, h = f(xm); sum += h * dx; rects += `<rect x="${X(A + i * dx)}" y="${Y(h)}" width="${dx * 120}" height="${170 - Y(h)}" fill="color-mix(in srgb, var(--accent) 35%, transparent)" stroke="var(--accent)" stroke-width="${n > 20 ? .4 : 1}"/>`; }
+      let curve = ''; for (let x = 0; x <= 2.1; x += .02) curve += `${curve ? 'L' : 'M'}${X(x).toFixed(1)} ${Y(f(x)).toFixed(1)} `;
+      $('#w-rm', el).innerHTML = `<line x1="25" y1="170" x2="290" y2="170" stroke="var(--muted)" stroke-width="2"/><line x1="25" y1="10" x2="25" y2="170" stroke="var(--muted)" stroke-width="2"/>${rects}<path d="${curve}" fill="none" stroke="#ff7a2f" stroke-width="3"/><text x="${X(2) - 4}" y="184" class="svg-text">2</text><text x="${X(1) - 4}" y="184" class="svg-text">1</text><text x="200" y="40" class="svg-text" style="fill:#ff7a2f">f(x) = x²</text>`;
+      $('#w-rm-r', el).innerHTML = `<span>suma de ${n} rectángulos = <b>${fmt(sum, 4)}</b></span><span>área exacta = 8/3 ≈ 2,6667</span><span>error = ${fmt(Math.abs(8 / 3 - sum), 4)}</span>`;
+    });
+  },
+  matrix(el) {
+    el.innerHTML = `<svg class="viz" id="w-mx" viewBox="-5.5 -5.5 11 11" style="max-width:360px;margin:0 auto"></svg><div class="readout" id="w-mx-r"></div><div class="controls">${slider('w-ma', 'a', -2, 2, .5, 1)}${slider('w-mb', 'b', -2, 2, .5, .5)}${slider('w-mc', 'c', -2, 2, .5, 0)}${slider('w-md', 'd', -2, 2, .5, 1)}</div>`;
+    bindSliders(el, ['w-ma', 'w-mb', 'w-mc', 'w-md'], () => {
+      const a = val(el, 'w-ma'), b = val(el, 'w-mb'), c = val(el, 'w-mc'), d = val(el, 'w-md'), T = (x, y) => [a * x + b * y, c * x + d * y];
+      let g = ''; for (let i = -5; i <= 5; i++) g += `<line x1="${i}" y1="-5.5" x2="${i}" y2="5.5" stroke="var(--line)" stroke-width="${i ? .03 : .07}"/><line x1="-5.5" y1="${i}" x2="5.5" y2="${i}" stroke="var(--line)" stroke-width="${i ? .03 : .07}"/>`;
+      const sq = [[0, 0], [1, 0], [1, 1], [0, 1]].map(([x, y]) => T(x * 2, y * 2)), v = T(1, 2);
+      $('#w-mx', el).innerHTML = g + `<path d="M0 0 H2 V-2 H0 Z" fill="none" stroke="var(--muted)" stroke-width=".06" stroke-dasharray=".2 .15"/><path d="M${sq.map(([x, y]) => `${x} ${-y}`).join(' L')} Z" fill="color-mix(in srgb, var(--accent) 30%, transparent)" stroke="var(--accent)" stroke-width=".1"/><line x1="0" y1="0" x2="1" y2="-2" stroke="#2f7df6" stroke-width=".12"/><line x1="0" y1="0" x2="${v[0]}" y2="${-v[1]}" stroke="#ff7a2f" stroke-width=".16"/><circle cx="${v[0]}" cy="${-v[1]}" r=".22" fill="#ff7a2f"/>`;
+      $('#w-mx-r', el).innerHTML = `<span>M = [${fmt(a)} ${fmt(b)}; ${fmt(c)} ${fmt(d)}]</span><span style="color:#2f7df6">v = (1, 2)</span><span style="color:#ff7a2f">M·v = (${fmt(v[0])}, ${fmt(v[1])})</span><span>det = ${fmt(a)}·${fmt(d)} − ${fmt(b)}·${fmt(c)} = <b>${fmt(a * d - b * c)}</b></span>`;
+    });
+  },
+  lines2(el) {
+    el.innerHTML = `<div id="w-l2"></div><div class="readout" id="w-l2-r"></div><div class="controls">${slider('w-m1', 'm₁', -3, 3, .5, 1)}${slider('w-b1', 'b₁', -4, 4, 1, 1)}${slider('w-m2', 'm₂', -3, 3, .5, -1)}${slider('w-b2', 'b₂', -4, 4, 1, 3)}</div>`;
+    bindSliders(el, ['w-m1', 'w-b1', 'w-m2', 'w-b2'], () => {
+      const m1 = val(el, 'w-m1'), b1 = val(el, 'w-b1'), m2 = val(el, 'w-m2'), b2 = val(el, 'w-b2'), par = m1 === m2;
+      const x = par ? NaN : (b2 - b1) / (m1 - m2), y = m1 * x + b1;
+      $('#w-l2', el).innerHTML = plotSVG(`<path d="${pathOf((t) => m1 * t + b1)}" fill="none" stroke="#2f7df6" stroke-width=".14"/><path d="${pathOf((t) => m2 * t + b2)}" fill="none" stroke="#ff7a2f" stroke-width=".14"/>${par || Math.abs(x) > 6.5 || Math.abs(y) > 6.5 ? '' : `<circle cx="${x}" cy="${y}" r=".3" fill="#ffc53d" stroke="var(--ink)" stroke-width=".06"/>`}`);
+      $('#w-l2-r', el).innerHTML = `<span style="color:#2f7df6">y = ${fmt(m1)}x ${b1 < 0 ? '− ' + -b1 : '+ ' + b1}</span><span style="color:#ff7a2f">y = ${fmt(m2)}x ${b2 < 0 ? '− ' + -b2 : '+ ' + b2}</span><span>${par ? (b1 === b2 ? 'Son la misma recta: infinitas soluciones' : 'Paralelas: no hay solución') : `Se cruzan en (${fmt(x)}, ${fmt(y)})`}</span>`;
+    });
+  },
   control(el) {
     el.innerHTML = `${svgNS('0 0 300 150', '', 'id="w-ct"')}<div class="readout" id="w-ct-r"></div><div class="controls">${slider('w-kp', 'Kp (reacción)', 0, .6, .02, .1)}${slider('w-ki', 'Ki (memoria)', 0, .04, .002, 0)}</div>`;
     bindSliders(el, ['w-kp', 'w-ki'], () => {
@@ -455,10 +549,10 @@ const Learn = {
   },
   pizarra(pre = '') {
     chrome(true, 'academy');
-    const ex = ['3 + 4 × 2', '(2 + 3)^2 − 4', '18 ÷ 3 × 2', '√16 + 3²', '3/4 + 1/2', '2x + 3 = 11', '5x − 2 = 3x + 8', '3(x + 2) = 18'];
-    $('#main').innerHTML = `<button class="back" data-go="#/academy">← Academia</button><h1>✍️ Pizarra</h1><p class="muted">Escribe un cálculo o una ecuación con x. Te digo qué hacer, paso a paso y en orden.</p>
+    const ex = ['3 + 4 × 2', '(2 + 3)^2 − 4', '18 ÷ 3 × 2', '√16 + 3²', '3/4 + 1/2', '2x + 3 = 11', '5x − 2 = 3x + 8', '3(x + 2) = 18', 'x + y = 10; x − y = 2', '2x + 3y = 12; x − y = 1'];
+    $('#main').innerHTML = `<button class="back" data-go="#/academy">← Academia</button><h1>✍️ Pizarra</h1><p class="muted">Escribe un cálculo, una ecuación con x, o un sistema de dos ecuaciones separadas por punto y coma (;). Te digo qué hacer, paso a paso.</p>
       <section class="card"><form id="pz-f" class="row" autocomplete="off"><input type="text" id="pz-in" placeholder="Ej.: 2x + 3 = 11" value="${esc(pre)}" aria-label="Cálculo o ecuación" class="grow"><button class="btn" type="submit">Resolver</button></form>
-        <div class="chips" style="margin-top:8px">${['+', '−', '×', '÷', '^', '(', ')', '√', 'x', '='].map((c) => `<button class="chip" type="button" data-k="${c}" style="min-width:46px">${c}</button>`).join('')}</div>
+        <div class="chips" style="margin-top:8px">${['+', '−', '×', '÷', '^', '(', ')', '√', 'x', 'y', '=', ';'].map((c) => `<button class="chip" type="button" data-k="${c}" style="min-width:46px">${c}</button>`).join('')}</div>
         <p class="muted" style="margin:10px 0 4px;font-weight:800">Ejemplos:</p><div class="chips" style="justify-content:flex-start">${ex.map((e) => `<button class="chip" type="button" data-ex="${esc(e)}">${esc(e)}</button>`).join('')}</div></section>
       <section id="pz-out"></section>`;
     const inp = $('#pz-in');
@@ -467,12 +561,12 @@ const Learn = {
     const solve = () => {
       const out = $('#pz-out'); let r;
       try { r = MathX.solve(inp.value); } catch (e) {
-        out.innerHTML = `<div class="callout bad">${String(e.message).includes('nolin') ? 'Esa ecuación tiene x multiplicada por x (no es lineal). Por ahora resuelvo ecuaciones de primer grado como 2x + 3 = 11.' : String(e.message).includes('falta') ? 'Tiene una x pero falta el signo =. Escribe una ecuación, por ejemplo 2x + 3 = 11.' : 'No entendí esa expresión. Usa números, + − × ÷ ^, paréntesis, √ y x.'}</div>`; return;
+        out.innerHTML = `<div class="callout bad">${String(e.message).includes('nolin') ? 'Esa ecuación tiene x multiplicada por x (no es lineal). Por ahora resuelvo ecuaciones de primer grado como 2x + 3 = 11.' : String(e.message).includes('y sola') ? 'Con x e y necesitas dos ecuaciones separadas por ; (por ejemplo: x + y = 10; x − y = 2).' : String(e.message).includes('falta') ? 'Falta el signo =. Escribe una ecuación, por ejemplo 2x + 3 = 11.' : 'No entendí esa expresión. Usa números, + − × ÷ ^, paréntesis, √ y x.'}</div>`; return;
       }
       let shown = 1;
       const draw = () => {
-        out.innerHTML = `<div class="card"><h3>${r.kind === 'eq' ? '🔎 Resolviendo la ecuación' : '🧮 Resolviendo en orden'}</h3><ol class="steps">${r.steps.slice(0, shown).map((s, i) => `<li><span class="muted">${s.msg}</span><div class="step-expr">${esc(s.expr)}</div></li>`).join('')}</ol>
-          ${shown < r.steps.length ? '<div class="row"><button class="btn grow" id="pz-n">Siguiente paso ▼</button><button class="btn ghost sm" id="pz-all">Ver todo</button></div>' : `<div class="callout ok"><b>Resultado:</b> ${r.kind === 'eq' ? (Number.isFinite(r.result) ? `x = ${MathX.num(r.result)}` : r.steps[r.steps.length - 1].msg) : MathX.num(r.result)}${r.kind === 'arit' && MathX.frac(r.result) ? ` = ${MathX.frac(r.result)}` : ''}</div>`}</div>`;
+        out.innerHTML = `<div class="card"><h3>${r.kind === 'sys' ? '🔀 Resolviendo el sistema' : r.kind === 'eq' ? '🔎 Resolviendo la ecuación' : '🧮 Resolviendo en orden'}</h3><ol class="steps">${r.steps.slice(0, shown).map((s, i) => `<li><span class="muted">${s.msg}</span><div class="step-expr">${esc(s.expr)}</div></li>`).join('')}</ol>
+          ${shown < r.steps.length ? '<div class="row"><button class="btn grow" id="pz-n">Siguiente paso ▼</button><button class="btn ghost sm" id="pz-all">Ver todo</button></div>' : `<div class="callout ok"><b>Resultado:</b> ${r.kind === 'sys' ? (Number.isFinite(r.result) ? `x = ${MathX.num(r.result)}, y = ${MathX.num(r.y)}` : r.steps[r.steps.length - 1].msg) : r.kind === 'eq' ? (Number.isFinite(r.result) ? `x = ${MathX.num(r.result)}` : r.steps[r.steps.length - 1].msg) : MathX.num(r.result)}${r.kind === 'arit' && MathX.frac(r.result) ? ` = ${MathX.frac(r.result)}` : ''}</div>`}</div>`;
         const n = $('#pz-n'); if (n) n.onclick = () => { shown++; Sfx.play('tap'); Voice.speak(r.steps[shown - 1].msg, { important: false }); draw(); };
         const a = $('#pz-all'); if (a) a.onclick = () => { shown = r.steps.length; draw(); };
         if (shown === r.steps.length) S().pizarraUses = (S().pizarraUses || 0) + 1;

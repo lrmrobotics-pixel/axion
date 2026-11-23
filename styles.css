@@ -326,3 +326,31 @@ ul.summary li::marker { content: "✓  "; color: var(--ok); }
 .gfb { min-height: 1.4em; margin: 0 0 4px; text-align: center; font-size: .9rem; font-weight: 800; color: var(--muted); }
 .gfb.bad { color: var(--bad); }
 .tag.pop { animation: bump .6s; border-color: var(--accent); }
+
+/* ---------- El Reino ---------- */
+.kingdom-hero { display: flex; gap: 14px; align-items: center; background: linear-gradient(135deg, color-mix(in srgb, #d4a017 22%, var(--surface)), var(--surface)); }
+.armor-row { display: flex; gap: 6px; flex-wrap: wrap; }
+.armor-row .piece { width: 38px; height: 38px; display: grid; place-items: center; border-radius: 12px; font-size: 1.2rem; background: var(--surface2); border: 2px dashed var(--line); filter: grayscale(1); opacity: .45; }
+.armor-row .piece.on { filter: none; opacity: 1; border: 2px solid #d4a017; background: color-mix(in srgb, #ffd23f 25%, var(--surface)); }
+.realm-path { position: relative; display: grid; gap: 16px; padding-left: 14px; margin-top: 10px; }
+.realm-path::before { content: ""; position: absolute; left: 5px; top: 20px; bottom: 20px; border-left: 4px dashed var(--line); }
+.realm { position: relative; background: var(--surface); border: 2px solid var(--line); border-radius: var(--radius); padding: 14px; box-shadow: var(--shadow); }
+.realm::before { content: ""; position: absolute; left: -16px; top: 26px; width: 14px; height: 14px; border-radius: 50%; background: var(--rc); border: 3px solid var(--surface); box-shadow: 0 0 0 2px var(--rc); }
+.realm.current { border-color: var(--rc); box-shadow: 0 0 0 3px color-mix(in srgb, var(--rc) 30%, transparent), var(--shadow); }
+.realm.locked { opacity: .6; filter: grayscale(.7); }
+.realm-banner { display: flex; gap: 12px; align-items: center; padding: 10px; border-radius: 16px; background: linear-gradient(135deg, var(--rc), color-mix(in srgb, var(--rc) 55%, #000)); color: #fff; }
+.realm-banner small { display: block; font-weight: 700; opacity: .92; }
+.realm-banner b { font-family: "Baloo 2", sans-serif; font-size: 1.15rem; }
+.realm-icon { font-size: 2.2rem; line-height: 1; }
+.missions { display: flex; flex-wrap: wrap; gap: 6px; }
+.mchip { min-height: 38px; padding: 4px 10px; border-radius: 12px; border: 2px solid var(--line); background: var(--surface2); font-weight: 800; font-size: .8rem; cursor: pointer; color: var(--ink); text-align: left; }
+.mchip.done { border-color: var(--ok); background: var(--ok-bg); }
+.boss-btn { --c: var(--rc); }
+.realm-card { border-color: var(--rc); }
+.boss-arena { text-align: center; padding: 14px; margin-bottom: 8px; border-radius: var(--radius); background: radial-gradient(circle at 50% 30%, color-mix(in srgb, var(--rc) 35%, var(--surface)), var(--surface)); border: 2px solid var(--rc); }
+.boss-face { font-size: 4.6rem; line-height: 1; animation: bob 2s ease-in-out infinite; }
+.boss-face.hit { animation: shake .4s; filter: brightness(1.6) drop-shadow(0 0 10px #ff3b3b); }
+.boss-hp { height: 16px; margin: 8px auto 2px; max-width: 320px; border-radius: 99px; background: var(--surface2); border: 2px solid var(--line); overflow: hidden; }
+.boss-hp i { display: block; height: 100%; background: linear-gradient(90deg, #ef4444, #f97316); transition: width .4s; }
+.hearts { font-size: 1.3rem; letter-spacing: 2px; }
+.matrix { font-family: ui-monospace, Consolas, monospace; white-space: nowrap; }

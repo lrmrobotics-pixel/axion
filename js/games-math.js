@@ -317,3 +317,59 @@ registerGame({
     $('#dv-check', ctx.stage).onclick = () => ctx.answer(Math.abs(m - target) < .26, `f'(${x0txt}) = ${fmt(target)}. ${rules[d]}`);
   },
 });
+
+/* ---------- 8. Área Secreta (integrales) ---------- */
+registerGame({
+  id: 'riemann', subj: 'mate', name: 'Área Secreta', icon: '📊', rounds: 5,
+  desc: 'Calcula el área bajo la curva: geometría e integrales.',
+  round(ctx) {
+    const d = ctx.diff; let f, F, a, name, exp;
+    if (d === 1) { const k = rnd(2, 6); a = rnd(2, 6); f = () => k; F = (x) => k * x; name = `f(x) = ${k}`; exp = `Rectángulo: base ${a} × altura ${k} = ${k * a}.`; }
+    else if (d === 2) { const m = rnd(1, 3); a = pick([2, 4, 6]); f = (x) => m * x; F = (x) => m * x * x / 2; name = `f(x) = ${m === 1 ? '' : m}x`; exp = `Triángulo: base ${a} × altura ${m * a} ÷ 2 = ${m * a * a / 2}.`; }
+    else if (d === 3) { a = pick([3, 6]); f = (x) => x * x; F = (x) => x ** 3 / 3; name = 'f(x) = x²'; exp = `∫₀^${a} x² dx = ${a}³/3 = ${a ** 3 / 3}.`; }
+    else if (d === 4) { a = 3; const k = rnd(1, 4); f = (x) => x * x + k; F = (x) => x ** 3 / 3 + k * x; name = `f(x) = x² + ${k}`; exp = `∫₀³ (x² + ${k}) dx = 27/3 + ${k}·3 = ${9 + 3 * k}.`; }
+    else { a = pick([2, 4]); f = (x) => x ** 3; F = (x) => x ** 4 / 4; name = 'f(x) = x³'; exp = `∫₀^${a} x³ dx = ${a}⁴/4 = ${a ** 4 / 4}.`; }
+    const ans = Math.round(F(a) * 1000) / 1000, maxY = Math.max(f(a), 1) * 1.15, X = (x) => 30 + (x / (a * 1.15)) * 260, Y = (y) => 165 - (y / maxY) * 150;
+    let area = `M${X(0)} ${Y(0)}`, curve = ''; for (let i = 0; i <= 60; i++) { const x = (a * i) / 60; area += ` L${X(x).toFixed(1)} ${Y(f(x)).toFixed(1)}`; } area += ` L${X(a)} ${Y(0)} Z`;
+    for (let i = 0; i <= 70; i++) { const x = (a * 1.12 * i) / 70; curve += `${i ? 'L' : 'M'}${X(x).toFixed(1)} ${Y(f(x)).toFixed(1)} `; }
+    ctx.stage.innerHTML = `<div class="prompt">¿Cuál es el área sombreada?<small>${name} entre x = 0 y x = ${a}</small></div>
+      <svg class="viz" viewBox="0 0 300 185" style="max-width:460px;margin:0 auto" role="img" aria-label="Área bajo ${name}">
+        <path d="${area}" fill="color-mix(in srgb, var(--accent) 35%, transparent)"/><path d="${curve}" fill="none" stroke="#ff7a2f" stroke-width="3"/>
+        <line x1="30" y1="165" x2="295" y2="165" stroke="var(--muted)" stroke-width="2"/><line x1="30" y1="10" x2="30" y2="165" stroke="var(--muted)" stroke-width="2"/>
+        <text x="${X(a)}" y="180" text-anchor="middle" class="svg-text">${a}</text><text x="${X(0)}" y="180" text-anchor="middle" class="svg-text">0</text><text x="4" y="${Y(f(a)) + 4}" class="svg-text">${fmt(f(a))}</text></svg>`;
+    const opts = uniqueOptions(ans, () => round(ans * pick([.5, 2, 1.5, .75, 3, 1 / 3]) + pick([0, 1, -1]), 2));
+    choiceButtons(ctx, ctx.stage, opts, ans, exp, (v) => fmt(v));
+  },
+});
+
+/* ---------- 9. Transformador de Matrices ---------- */
+registerGame({
+  id: 'matrices', subj: 'mate', name: 'Transformador de Matrices', icon: '🔢', rounds: 6,
+  desc: 'Multiplica matrices por vectores y calcula determinantes.',
+  round(ctx) {
+    const d = ctx.diff, r = (lo, hi) => rnd(lo, hi);
+    const M = d === 1 ? [r(0, 3), r(0, 3), r(0, 3), r(0, 3)] : [r(-3, 3), r(-3, 3), r(-3, 3), r(-3, 3)];
+    const mat = (m) => `<span class="matrix">[${m[0]} ${m[1]} ; ${m[2]} ${m[3]}]</span>`.replace(/-/g, '−');
+    if (d <= 2 || d === 5) {
+      const v = d === 1 ? [r(1, 3), r(1, 3)] : [r(-3, 3), r(-3, 3)];
+      const res = [M[0] * v[0] + M[1] * v[1], M[2] * v[0] + M[3] * v[1]], key = (p) => `(${fmt(p[0])}, ${fmt(p[1])})`;
+      const wrong = [[M[0] * v[0] + M[2] * v[1], M[1] * v[0] + M[3] * v[1]], [res[0] + 1, res[1]], [res[0], res[1] - 1], [M[0] * v[0], M[3] * v[1]], [res[1], res[0]]];
+      const opts = shuffle([key(res), ...shuffle(wrong.map(key).filter((k) => k !== key(res))).filter((k, i, s) => s.indexOf(k) === i).slice(0, 3)]);
+      let g = ''; for (let i = -9; i <= 9; i += 3) g += `<line x1="${i}" y1="-10" x2="${i}" y2="10" stroke="var(--line)" stroke-width="${i ? .06 : .14}"/><line x1="-10" y1="${i}" x2="10" y2="${i}" stroke="var(--line)" stroke-width="${i ? .06 : .14}"/>`;
+      const cl = (z) => clamp(z, -9.5, 9.5);
+      ctx.stage.innerHTML = `<div class="prompt">Calcula M · v<small>Fila por columna: multiplica y suma</small></div><div class="big-expr" style="font-size:clamp(1.4rem,6vw,2rem)">${mat(M)} · (${v.join(', ').replace(/-/g, '−')})</div>
+        ${d < 5 ? `<svg class="viz" viewBox="-10 -10 20 20" style="max-width:240px;margin:0 auto 10px">${g}<line x1="0" y1="0" x2="${v[0]}" y2="${-v[1]}" stroke="#2f7df6" stroke-width=".35"/><circle cx="${v[0]}" cy="${-v[1]}" r=".5" fill="#2f7df6"/><text x="${cl(v[0]) + .6}" y="${-cl(v[1])}" font-size="1.6" fill="#2f7df6" font-weight="800">v</text></svg>` : ''}`;
+      choiceButtons(ctx, ctx.stage, opts, key(res), `Fila 1: ${M[0]}·${v[0]} + ${M[1]}·${v[1]} = ${res[0]}. Fila 2: ${M[2]}·${v[0]} + ${M[3]}·${v[1]} = ${res[1]}.`.replace(/-/g, '−'), (o) => o);
+    } else if (d === 3) {
+      const det = M[0] * M[3] - M[1] * M[2];
+      ctx.stage.innerHTML = `<div class="prompt">¿Cuál es el determinante?<small>det = a·d − b·c</small></div><div class="big-expr" style="font-size:clamp(1.6rem,7vw,2.2rem)">det ${mat(M)}</div>`;
+      choiceButtons(ctx, ctx.stage, uniqueOptions(det, () => pick([M[0] * M[3] + M[1] * M[2], M[0] * M[1] - M[2] * M[3], -det, det + pick([1, -1, 2])])), det, `${M[0]}·${M[3]} − ${M[1]}·${M[2]} = ${det}.`.replace(/-/g, '−'), (v) => fmt(v));
+    } else {
+      const T = pick([['gira 90° en sentido antihorario', [0, -1, 1, 0]], ['refleja en el eje x (voltea arriba/abajo)', [1, 0, 0, -1]], ['duplica el tamaño', [2, 0, 0, 2]], ['refleja en el eje y (voltea izquierda/derecha)', [-1, 0, 0, 1]], ['no cambia nada (identidad)', [1, 0, 0, 1]]]);
+      const all = [[0, -1, 1, 0], [1, 0, 0, -1], [2, 0, 0, 2], [-1, 0, 0, 1], [1, 0, 0, 1], [0, 1, 1, 0]];
+      const opts = shuffle([T[1], ...shuffle(all.filter((m) => m.join() !== T[1].join())).slice(0, 3)]).map((m) => m.join());
+      ctx.stage.innerHTML = `<div class="prompt">¿Qué matriz ${T[0]}?<small>Pista: mira a dónde mandan (1, 0) y (0, 1)</small></div>`;
+      choiceButtons(ctx, ctx.stage, opts, T[1].join(), `La columna 1 es a dónde va (1, 0) y la columna 2 a dónde va (0, 1).`, (o) => mat(o.split(',').map(Number)));
+    }
+  },
+});

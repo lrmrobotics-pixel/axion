@@ -4,7 +4,7 @@
 'use strict';
 
 /* Versión de la app: la actualiza scripts/release.js */
-const APP_VERSION = '1.2.6';
+const APP_VERSION = '1.3.0';
 const UPDATE_REPO = 'lrmrobotics-pixel/axion-releases';
 
 /* ---------- utilidades ---------- */
@@ -35,7 +35,7 @@ const DEFAULT_STATE = () => ({
   totalCorrect: 0, totalAnswered: 0, sessions: 0, perfects: 0,
   settings: { accent: '#7c5cff', mode: 'auto', sound: true, music: false, haptics: true, tts: true, voicePersona: 'cercana', voiceName: '', voiceRate: 1, voiceChatty: true, fontScale: 1, motion: 'auto' },
   mascot: { color: '#7c5cff', owned: ['c-morado'], head: null, face: null, neck: null },
-  modules: {}, lessons: {}, badges: [], history: {}, mission: null, bestRelampago: 0, subjectsPlayed: [],
+  modules: {}, lessons: {}, kingdom: { bosses: {}, pieces: [] }, badges: [], history: {}, mission: null, bestRelampago: 0, subjectsPlayed: [],
 });
 const Store = {
   s: null,
@@ -334,6 +334,7 @@ function mascotSVG(mood = 'idle', m = S().mascot) {
   const acc = (slot) => (m[slot] && ACCESSORIES[m[slot]] ? ACCESSORIES[m[slot]].svg : '');
   return `<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
     <ellipse cx="50" cy="97" rx="22" ry="3" fill="rgba(0,0,0,.15)"/>
+    ${typeof armorLayers === 'function' ? armorLayers(m, true) : ''}
     <line x1="50" y1="22" x2="50" y2="12" stroke="${c}" stroke-width="4"/>
     <circle cx="50" cy="10" r="5.5" fill="#ffc53d" stroke="#000" stroke-opacity=".2" stroke-width="2"><animate attributeName="opacity" values="1;.5;1" dur="1.6s" repeatCount="indefinite"/></circle>
     <rect x="20" y="78" width="60" height="16" rx="8" fill="${c}" stroke="rgba(0,0,0,.25)" stroke-width="2.5"/>
@@ -345,6 +346,7 @@ function mascotSVG(mood = 'idle', m = S().mascot) {
     <path d="M28 38 Q40 34 52 36" stroke="rgba(255,255,255,.18)" stroke-width="3" fill="none" stroke-linecap="round"/>
     ${eyes}${mouth}
     ${mood === 'happy' ? '<circle cx="29" cy="62" r="3.5" fill="#ff7aa8" opacity=".7"/><circle cx="71" cy="62" r="3.5" fill="#ff7aa8" opacity=".7"/>' : ''}
+    ${typeof armorLayers === 'function' ? armorLayers(m, false) : ''}
     ${acc('neck')}${acc('face')}${acc('head')}
   </svg>`;
 }
@@ -410,7 +412,7 @@ const Confetti = {
 const TITLES = ['Aprendiz', 'Tornillo suelto', 'Engranaje', 'Chispa', 'Circuito', 'Servomotor', 'Microcontrolador', 'Androide', 'Ciborg', 'Ingeniero/a Supremo/a', 'Leyenda Mecatrónica'];
 const levelOf = (xp) => Math.floor(Math.sqrt(xp / 40)) + 1;
 const xpFor = (lvl) => 40 * (lvl - 1) ** 2;
-const titleOf = (lvl) => TITLES[Math.min(TITLES.length - 1, Math.floor((lvl - 1) / 2))];
+const titleOf = (lvl) => (S().kingdom && Object.keys(S().kingdom.bosses || {}).length >= 6 ? 'Lord of Engineer 👑' : TITLES[Math.min(TITLES.length - 1, Math.floor((lvl - 1) / 2))]);
 
 /* ---------- repetición espaciada (SM-2 adaptado) ---------- */
 const SRS = {
@@ -542,6 +544,8 @@ const BADGES = [
   { id: 'lvl10', e: '🤖', name: 'Androide', desc: 'Llega al nivel 10', test: (s) => levelOf(s.xp) >= 10 },
   { id: 'speed', e: '⚡', name: 'Relámpago', desc: '25 aciertos en Cálculo Relámpago', test: (s) => s.bestRelampago >= 25 },
   { id: 'master', e: '🎓', name: 'Maestría', desc: 'Un módulo al 90% de dominio', test: (s) => Object.values(s.modules).some((m) => m.mastery >= 90) },
+  { id: 'boss1', e: '⚔️', name: 'Matajefes', desc: 'Derrota a tu primer jefe del Reino', test: (s) => Object.keys((s.kingdom || {}).bosses || {}).length >= 1 },
+  { id: 'lord', e: '👑', name: 'Lord of Engineer', desc: 'Conquista las 6 regiones del Reino', test: (s) => Object.keys((s.kingdom || {}).bosses || {}).length >= 6 },
   { id: 'lesson1', e: '📖', name: 'Estudiante', desc: 'Completa tu primera lección', test: (s) => Object.keys(s.lessons || {}).length >= 1 },
   { id: 'lesson10', e: '🎓', name: 'Erudito', desc: 'Completa 10 lecciones', test: (s) => Object.keys(s.lessons || {}).length >= 10 },
   { id: 'shop3', e: '🛍️', name: 'Coleccionista', desc: 'Compra 3 objetos', test: (s) => s.mascot.owned.length >= 4 },

@@ -135,6 +135,50 @@ const LESSONS = [
     sum: ['La derivada mide el ritmo de cambio; geométricamente es la pendiente de la tangente.', "Regla de la potencia: (xⁿ)' = n·xⁿ⁻¹.", 'La derivada de una constante es 0.'],
   },
 
+  {
+    id: 'integrales', subj: 'mate', icon: '📊', title: 'Integrales: el área bajo la curva', desc: 'Sumar infinitos pedacitos (cálculo integral)', min: 8, game: 'riemann',
+    blocks: [
+      { t: 'text', h: '¿Qué es una integral?', p: '<p>La integral <b>suma infinitos pedacitos</b> para obtener un total: el área bajo una curva.</p><p>Es lo contrario de la derivada: si la derivada de la posición es la velocidad, la integral de la velocidad devuelve la <b>distancia recorrida</b>.</p>' },
+      { t: 'widget', w: 'riemann', h: 'Rectángulos cada vez más finos', p: 'Aumenta el número de rectángulos: su suma se acerca al área exacta bajo x² entre 0 y 2, que es 8/3 ≈ 2,667.' },
+      { t: 'formula', h: 'La notación', f: '∫ₐᵇ f(x) dx = área bajo f entre a y b', p: '<p>El símbolo ∫ es una S alargada de “suma”. Si la figura es un rectángulo o un triángulo, puedes usar geometría.</p>' },
+      { t: 'try', q: 'Área bajo f(x) = 3 entre x = 0 y x = 4', a: 12, hint: 'Es un rectángulo.', explain: 'Base 4 × altura 3 = 12.', steps: [{ ask: 'Es un rectángulo: base 4 por altura 3', a: 12, hint: 'Cuatro por tres.' }] },
+      { t: 'try', q: 'Área bajo f(x) = 2x entre x = 0 y x = 3', a: 9, hint: 'Es un triángulo: base × altura ÷ 2.', explain: 'Base 3, altura f(3) = 6, área = 3·6/2 = 9.', steps: [{ ask: 'La base es 3. ¿La altura? f(3) = 2 × 3', a: 6, hint: 'Evalúa la función en 3.' }, { ask: 'Área = 3 × 6 ÷ 2', a: 9, hint: 'Base por altura, entre dos.' }] },
+      { t: 'formula', h: 'El atajo: antiderivada', f: '∫ xⁿ dx = xⁿ⁺¹/(n+1)   ·   ∫ₐᵇ f(x) dx = F(b) − F(a)', p: '<p><b>Teorema fundamental del cálculo:</b> busca F (una función cuya derivada es f), evalúala en los extremos y resta.</p>' },
+      { t: 'example', q: '∫₀³ x² dx', steps: ['La antiderivada de x² es x³/3 (súmale 1 al exponente y divide entre el nuevo exponente).', 'F(3) = 27/3 = 9 y F(0) = 0.', 'Área = 9 − 0 = <b>9</b>.'] },
+      { t: 'try', q: 'Calcula ∫₀² x³ dx', a: 4, hint: 'La antiderivada de x³ es x⁴/4.', explain: 'F(2) − F(0) = 16/4 − 0 = 4.', steps: [{ ask: 'Evalúa x⁴/4 en x = 2: 2⁴ ÷ 4', a: 4, hint: '2⁴ = 16.' }, { ask: 'Resta F(0) = 0: 4 − 0', a: 4, hint: 'Cuatro menos cero.' }] },
+      { t: 'quiz', q: 'La integral de la velocidad respecto al tiempo da…', o: ['la distancia recorrida', 'la aceleración', 'la masa', 'la fuerza'], c: 0, why: 'Sumar velocidad × pedacitos de tiempo da distancia.' },
+    ],
+    sum: ['La integral es el área bajo la curva: suma infinitos pedacitos.', 'Regla de la potencia: ∫ xⁿ dx = xⁿ⁺¹/(n+1).', 'Teorema fundamental: ∫ₐᵇ f = F(b) − F(a).'],
+  },
+  {
+    id: 'matrices', subj: 'mate', icon: '🔢', title: 'Matrices: álgebra lineal', desc: 'Tablas de números que giran y deforman el espacio', min: 8, game: 'matrices',
+    blocks: [
+      { t: 'text', h: '¿Qué es una matriz?', p: '<p>Es una tabla de números en filas y columnas. Una 2×2 se escribe [a b; c d].</p><p>En robótica y gráficos se usan para <b>girar, escalar y mover</b> puntos, por ejemplo la posición de la mano de un brazo robótico.</p>' },
+      { t: 'formula', h: 'Matriz por vector', f: '[a b; c d] · (x, y) = (a·x + b·y,  c·x + d·y)', p: '<p>Regla: <b>fila por columna</b>. Multiplica cada número de la fila por el del vector y suma.</p>' },
+      { t: 'widget', w: 'matrix', h: 'Deforma el espacio', p: 'Cambia a, b, c y d. El cuadrado gris se transforma en el morado. Con [1 0; 0 1] (matriz identidad) nada cambia.' },
+      { t: 'try', q: '[2 1; 0 3] · (1, 2). ¿Cuál es la primera componente del resultado?', a: 4, hint: 'Fila 1 por el vector.', explain: 'Fila 1: 2·1 + 1·2 = 4. Fila 2: 0·1 + 3·2 = 6. Resultado (4, 6).', steps: [{ ask: 'Fila 1 por el vector: 2·1 + 1·2', a: 4, hint: 'Dos más dos.' }] },
+      { t: 'try', q: 'Y la segunda componente de [2 1; 0 3] · (1, 2)', a: 6, hint: 'Fila 2 por el vector.', explain: '0·1 + 3·2 = 6.', steps: [{ ask: 'Fila 2: 0·1 + 3·2', a: 6, hint: 'Cero más seis.' }] },
+      { t: 'formula', h: 'El determinante', f: 'det [a b; c d] = a·d − b·c', p: '<p>Dice cuántas veces se agranda el área. Si es <b>0</b>, la matriz aplasta todo en una línea (y no tiene inversa).</p>' },
+      { t: 'try', q: 'Calcula det [3 1; 2 4]', a: 10, hint: 'a·d − b·c.', explain: '3·4 − 1·2 = 12 − 2 = 10.', steps: [{ ask: 'a·d = 3 × 4', a: 12, hint: 'Diagonal principal.' }, { ask: 'b·c = 1 × 2', a: 2, hint: 'La otra diagonal.' }, { ask: '12 − 2', a: 10, hint: 'Resta.' }] },
+      { t: 'quiz', q: '¿Qué hace la matriz [0 −1; 1 0] con el vector (1, 0)?', o: ['Lo gira 90° hasta (0, 1)', 'Lo duplica', 'Lo borra', 'Nada'], c: 0, why: '(0·1 + (−1)·0, 1·1 + 0·0) = (0, 1): es una rotación de 90°.' },
+    ],
+    sum: ['Una matriz transforma vectores: fila por columna, multiplica y suma.', 'det [a b; c d] = a·d − b·c: cuánto cambia el área.', 'La matriz identidad [1 0; 0 1] no cambia nada; [0 −1; 1 0] gira 90°.'],
+  },
+  {
+    id: 'sistemas', subj: 'mate', icon: '🔀', title: 'Sistemas de ecuaciones', desc: 'Dos incógnitas, dos ecuaciones, un punto de cruce', min: 7, game: 'graficador',
+    blocks: [
+      { t: 'text', h: 'Dos pistas, dos incógnitas', p: '<p>Si tienes dos incógnitas (x e y), necesitas <b>dos ecuaciones</b>. Cada una es una recta; la solución es el <b>punto donde se cruzan</b>.</p>' },
+      { t: 'widget', w: 'lines2', h: 'Cruza dos rectas', p: 'Mueve las pendientes y cortes. El punto amarillo es la solución del sistema. Prueba a hacerlas paralelas.' },
+      { t: 'example', q: 'x + y = 10 ; x − y = 2', steps: ['Suma las dos ecuaciones: la y se cancela. (x + y) + (x − y) = 10 + 2 → 2x = 12.', 'Despeja: x = 6.', 'Sustituye en la primera: 6 + y = 10 → <b>y = 4</b>.'] },
+      { t: 'try', q: 'Resuelve x + y = 7 ; x − y = 1. ¿Cuánto vale x?', a: 4, hint: 'Suma las dos ecuaciones para eliminar la y.', explain: '2x = 8, x = 4.', steps: [{ ask: 'Suma los lados derechos: 7 + 1', a: 8, hint: 'Queda 2x = 8.' }, { ask: '2x = 8 → x = 8 ÷ 2', a: 4, hint: 'La mitad de ocho.' }] },
+      { t: 'try', q: 'Con x = 4, ¿cuánto vale y en x + y = 7?', a: 3, hint: 'Despeja y.', explain: 'y = 7 − 4 = 3. Solución (4, 3).', steps: [{ ask: 'y = 7 − 4', a: 3, hint: 'Siete menos cuatro.' }] },
+      { t: 'text', h: 'Tu ayudante: la Pizarra', p: '<p>En la <b>Pizarra ✍️</b> escribe las dos ecuaciones separadas por punto y coma: <code>x + y = 10; x − y = 2</code>. Te muestra la eliminación paso a paso.</p>' },
+      { t: 'try', q: 'Resuelve 2x + y = 11 ; x − y = 1. ¿Cuánto vale x?', a: 4, hint: 'Suma las ecuaciones.', explain: '3x = 12 → x = 4, y = 3.', steps: [{ ask: 'Al sumar: 2x + x = 3x. ¿Cuánto es 11 + 1?', a: 12, hint: 'Queda 3x = 12.' }, { ask: '3x = 12 → x = 12 ÷ 3', a: 4, hint: 'Doce entre tres.' }] },
+      { t: 'quiz', q: 'Si las dos rectas son paralelas (distintas), el sistema…', o: ['no tiene solución', 'tiene una solución', 'tiene dos soluciones', 'siempre da 0'], c: 0, why: 'Las paralelas nunca se cruzan, así que no hay un punto que cumpla ambas.' },
+    ],
+    sum: ['Un sistema 2×2 tiene dos ecuaciones y dos incógnitas; su solución es el cruce de dos rectas.', 'Eliminación: suma o resta las ecuaciones para cancelar una incógnita.', 'Rectas paralelas: sin solución; la misma recta: infinitas soluciones.'],
+  },
+
   /* ===================== FÍSICA ===================== */
   {
     id: 'unidades', subj: 'fisica', icon: '📏', title: 'Magnitudes y unidades', desc: 'El Sistema Internacional y cómo convertir', min: 6, game: 'potencias',
