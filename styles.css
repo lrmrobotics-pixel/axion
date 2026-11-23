@@ -321,3 +321,8 @@ ul.summary { padding-left: 20px; margin: 6px 0; }
 ul.summary li { margin-bottom: 8px; font-weight: 700; }
 ul.summary li::marker { content: "✓  "; color: var(--ok); }
 .tabbar button { font-size: .68rem; }
+
+/* reto contra reloj: aviso de error en línea y nivel animado (no tapan la operación) */
+.gfb { min-height: 1.4em; margin: 0 0 4px; text-align: center; font-size: .9rem; font-weight: 800; color: var(--muted); }
+.gfb.bad { color: var(--bad); }
+.tag.pop { animation: bump .6s; border-color: var(--accent); }

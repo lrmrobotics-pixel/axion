@@ -193,11 +193,11 @@ const Runner = {
     $('#main').innerHTML = `<div class="game-top"><button class="icon-btn" id="quit" aria-label="Salir del juego">✕</button>
       <div class="bar ${g.timed ? 'timer' : ''}" role="progressbar" aria-label="${g.timed ? 'Tiempo' : 'Progreso'}"><i id="gbar"></i></div>
       ${g.timed ? '<span class="combo" id="gcombo"></span>' : ''}<span class="count" id="gcount"></span></div>
-      <h2 class="center" style="margin:0 0 4px;font-size:1.05rem">${g.icon} ${g.name} <span class="tag" id="gdiff">Nv ${st.diff}</span></h2>
+      <h2 class="center" style="margin:0 0 4px;font-size:1.05rem">${g.icon} ${g.name} <span class="tag" id="gdiff">Nv ${st.diff}</span></h2>${g.timed ? '<p class="gfb" id="gfb" aria-live="polite"></p>' : ''}
       <div class="stage" id="stage"></div>
       <div class="sheet" id="sheet" role="status"><div class="in"><div class="txt"><h3 id="sh-t"></h3><p id="sh-p"></p></div><button class="btn" id="sh-b">Continuar</button></div></div>`;
     $('#quit').onclick = () => { this.stop(); history.back(); };
-    if (g.timed) { const tick = () => { if (this.st !== st) return; const left = Math.max(0, st.end - Date.now()); $('#gbar').style.width = (left / (g.timed * 1000)) * 100 + '%'; $('#gcount').textContent = Math.ceil(left / 1000) + 's'; if (left <= 0) return this.finish(); if (left < 10000 && !st.warned) { st.warned = true; Voice.speak('Diez segundos.', { important: false }); } st.timers.push(setTimeout(tick, 200)); }; tick(); }
+    if (g.timed) { const tick = () => { if (this.st !== st) return; const left = Math.max(0, st.end - Date.now()); $('#gbar').style.width = Math.min(100, (left / (g.timed * 1000)) * 100) + '%'; $('#gcount').textContent = Math.min(g.timed, Math.ceil(left / 1000)) + 's'; if (left <= 0) return this.finish(); if (left < 10000 && !st.warned) { st.warned = true; Voice.speak('Diez segundos.', { important: false }); } st.timers.push(setTimeout(tick, 200)); }; tick(); }
     Mascot.say(g.timed ? `${g.name}: sesenta segundos. Cada combo suma puntos extra. ¡Ya!` : COMPANION.start(g.name, st.diff), 'happy', 2600);
     this.next();
   },
@@ -218,7 +218,6 @@ const Runner = {
     if (st.g.timed && Date.now() >= st.end) return this.finish();
     st.locked = false; const stage = $('#stage'); stage.innerHTML = ''; delete stage.dataset.done;
     if (!st.g.timed) { $('#gbar').style.width = (st.i / st.total) * 100 + '%'; $('#gcount').textContent = `${st.i + 1}/${st.total}`; }
-    $('#gdiff').textContent = `Nv ${st.diff}`;
     try { st.g.round(this.ctx()); } catch (err) { console.error(err); stage.innerHTML = '<p class="center">Ups, algo falló en este reto. Pasemos al siguiente.</p>'; setTimeout(() => { st.i++; this.next(); }, 1200); }
     stage.querySelector('button, [tabindex="0"]')?.focus({ preventScroll: true });
   },
@@ -228,19 +227,27 @@ const Runner = {
     if (ok) { st.correct++; st.combo++; st.bestCombo = Math.max(st.bestCombo, st.combo); st.okRun++; st.badRun = 0; Sfx.play('ok'); buzz(18); }
     else { st.combo = 0; st.badRun++; st.okRun = 0; st.mistakes.push(exp); Sfx.play('bad'); buzz([30, 40, 30]); }
     // dificultad adaptativa dentro de la sesión
-    if (st.okRun >= (st.g.timed ? 4 : 2) && st.diff < 5) { st.diff++; st.okRun = 0; toast(`⬆ Dificultad ${st.diff}`); if (!st.g.timed) st.say = COMPANION.up(st.diff); }
-    if (st.badRun >= 2 && st.diff > 1) { st.diff--; st.badRun = 0; toast('Bajamos un poco la dificultad 💪'); st.say = COMPANION.down(); }
+    // el cambio de nivel se marca en la etiqueta "Nv" del encabezado: nada tapa la operación
+    if (st.okRun >= (st.g.timed ? 4 : 2) && st.diff < 5) { st.diff++; st.okRun = 0; this.levelBadge('⬆'); if (!st.g.timed) st.say = COMPANION.up(st.diff); }
+    if (st.badRun >= 2 && st.diff > 1) { st.diff--; st.badRun = 0; this.levelBadge('⬇'); st.say = COMPANION.down(); }
     if (st.g.timed) {
       const c = $('#gcombo'); if (c) { c.textContent = st.combo > 1 ? `x${st.combo}🔥` : ''; c.classList.remove('pop'); void c.offsetWidth; c.classList.add('pop'); }
       if (st.combo && st.combo % 5 === 0) Mascot.say(COMPANION.combo(st.combo), 'wow', 1500, 'chat');
-      st.timers.push(setTimeout(() => this.next(), ok ? 320 : 1300));
-      if (!ok) this.sheet(false, exp, true);
+      // reto contra reloj: el error se explica en una línea (sin panel encima) y la pausa no descuenta tiempo
+      const pause = ok ? 320 : 1300; st.end += pause;
+      const fb = $('#gfb'); if (fb) { fb.textContent = ok ? '' : exp.replace(/<[^>]+>/g, ''); fb.className = 'gfb' + (ok ? '' : ' bad'); }
+      st.timers.push(setTimeout(() => this.next(), pause));
       return;
     }
     if (st.combo >= 3 && ok) Mascot.say(COMPANION.combo(st.combo), 'wow', 1800, 'chat');
     else { Mascot.react(ok ? 'happy' : 'oops', ok ? 'jump' : 'wiggle'); if (ok) Voice.speak(st.say || COMPANION.ok(), { important: !!st.say }); }
     if (ok) st.say = null;
     this.sheet(ok, exp);
+  },
+  levelBadge(arrow) {
+    const b = $('#gdiff'); if (!b) return;
+    b.textContent = `Nv ${this.st.diff} ${arrow}`; b.classList.remove('pop'); void b.offsetWidth; b.classList.add('pop');
+    Sfx.play(arrow === '⬆' ? 'coin' : 'tap');
   },
   sheet(ok, exp, auto) {
     const sh = $('#sheet'); if (!sh) return;
