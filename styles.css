@@ -354,3 +354,13 @@ ul.summary li::marker { content: "✓  "; color: var(--ok); }
 .boss-hp i { display: block; height: 100%; background: linear-gradient(90deg, #ef4444, #f97316); transition: width .4s; }
 .hearts { font-size: 1.3rem; letter-spacing: 2px; }
 .matrix { font-family: ui-monospace, Consolas, monospace; white-space: nowrap; }
+
+/* ---------- notación matemática de libro ---------- */
+.frac { display: inline-flex; flex-direction: column; align-items: center; vertical-align: middle; margin: 0 .12em; line-height: 1.05; font-size: .92em; }
+.frac .fn { border-bottom: .09em solid currentColor; padding: 0 .18em .05em; }
+.frac .fd { padding: .05em .18em 0; }
+.sqrt { white-space: nowrap; }
+.sqrt .rad { border-top: .09em solid currentColor; padding: 0 .12em; margin-left: .02em; }
+sup { font-size: .62em; line-height: 0; vertical-align: .9em; }
+.math-preview { min-height: 1.8em; margin-top: 8px; padding: 6px 12px; border-radius: 12px; background: var(--surface2); font-family: "Baloo 2", sans-serif; font-size: 1.35rem; font-weight: 800; text-align: center; }
+.math-preview:empty { display: none; }

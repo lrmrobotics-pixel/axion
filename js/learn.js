@@ -73,6 +73,7 @@ const MathX = {
     else if (n.k === 'neg') s = `−${this.str(n.e, false)}`;
     else if (n.k === 'sqrt') s = `√${this.str(n.e, false)}`;
     else if (n.o === '*' && n.l.k === 'n' && !n.l.pi && (n.r.k === 'x' || n.r.k === 'y' || (n.r.par && n.r.k !== 'n'))) s = `${this.str(n.l, false)}${this.str(n.r, false)}`; // 2x, 3(x + 2)
+    else if (n.o === '/' && ['n', 'x', 'y'].includes(n.l.k) && ['n', 'x', 'y'].includes(n.r.k) && !(n.l.v < 0) && !(n.r.v < 0)) s = `${this.str(n.l, false)}/${this.str(n.r, false)}`; // se muestra como fracción apilada
     else s = n.o === '^' ? `${this.str(n.l, false)}^${this.str(n.r, false)}` : `${this.str(n.l, false)} ${SYM[n.o]} ${this.str(n.r, false)}`;
     return n.par && n.k !== 'n' ? `(${s})` : s;
   },
@@ -98,9 +99,27 @@ const MathX = {
     if (!s) return null;
     return { node: !isN(n.l) ? { ...n, l: s.node } : { ...n, r: s.node }, msg: s.msg };
   },
+  // elige la siguiente operación según la jerarquía: paréntesis → potencias/raíces → × ÷ → + −, y de izquierda a derecha
+  stepByOrder(root) {
+    const isN = (m) => m.k === 'n', cands = []; let order = 0;
+    const ready = (n) => (n.k === 'op' && isN(n.l) && isN(n.r)) || ((n.k === 'neg' || n.k === 'sqrt') && isN(n.e));
+    const walk = (n, inPar) => {
+      if (!n || isN(n)) return;
+      const par = inPar || !!n.par;
+      if (n.k === 'op') { walk(n.l, par); walk(n.r, par); } else walk(n.e, par);
+      if (ready(n)) cands.push({ n, order: order++, score: par ? 0 : n.k === 'sqrt' || n.o === '^' ? 1 : n.k === 'neg' ? 1 : n.o === '*' || n.o === '/' ? 2 : 3 });
+    };
+    walk(root, false);
+    if (!cands.length) return this.step(root, root);
+    cands.sort((a, b) => a.score - b.score || a.order - b.order);
+    const target = cands[0].n, one = this.step(target, root); if (!one) return null;
+    if (cands[0].score === 0 && !target.par && !/paréntesis/.test(one.msg)) one.msg = `Primero lo que está entre paréntesis. ${one.msg}`;
+    const rep = (n) => (n === target ? one.node : isN(n) ? n : n.k === 'op' ? { ...n, l: rep(n.l), r: rep(n.r) } : { ...n, e: rep(n.e) });
+    return { node: rep(root), msg: one.msg };
+  },
   arithmeticSteps(ast) {
     const steps = [{ expr: this.str(ast), msg: 'Empezamos con la expresión.' }]; let cur = ast, guard = 0;
-    while (cur.k !== 'n' && guard++ < 40) { const s = this.step(cur, cur); if (!s) break; cur = s.node; steps.push({ expr: this.str(cur), msg: s.msg }); }
+    while (cur.k !== 'n' && guard++ < 40) { const s = this.stepByOrder(cur); if (!s) break; cur = s.node; steps.push({ expr: this.str(cur), msg: s.msg }); }
     return { steps, result: cur.k === 'n' ? cur.v : NaN };
   },
   linear(n) {
@@ -495,12 +514,13 @@ const Learn = {
   tryBlock(b, card, st, cont) {
     let mode = 'final', k = 0, fails = 0, first = true;
     card.innerHTML = `<h3>✍️ Tu turno</h3><p class="lesson-text"><b>${b.q}</b></p><div id="ls-guide"></div>
-      <form id="ls-form" class="row" autocomplete="off"><input type="text" id="ls-in" inputmode="text" placeholder="Escribe tu resultado o cálculo" aria-label="Tu respuesta" class="grow"><button class="btn" type="submit">Comprobar</button></form>
+      <form id="ls-form" class="row" autocomplete="off"><input type="text" id="ls-in" inputmode="text" placeholder="Escribe tu resultado o cálculo" aria-label="Tu respuesta" class="grow"><button class="btn" type="submit">Comprobar</button></form><div class="math-preview" id="ls-pv" aria-live="polite"></div>
       <div class="chips" style="margin-top:8px">${['+', '−', '×', '÷', '^', '(', ')', '√', 'x', '/'].map((c) => `<button class="chip" type="button" data-k="${c}" style="min-width:46px">${c}</button>`).join('')}</div>
       <div id="ls-fb"></div><button class="btn ghost sm" id="ls-help" style="margin-top:10px">🤝 Guíame paso a paso</button>`;
     cont('Resuelve para continuar', false);
     const inp = $('#ls-in'), fb = $('#ls-fb'), guide = $('#ls-guide');
-    $$('[data-k]', card).forEach((c) => c.onclick = () => { inp.value += c.dataset.k; inp.focus(); });
+    MathView.preview(inp, $('#ls-pv'));
+    $$('[data-k]', card).forEach((c) => c.onclick = () => { inp.value += c.dataset.k; inp.dispatchEvent(new Event('input')); inp.focus(); });
     const showStep = () => { const s = b.steps[k]; guide.innerHTML = `<div class="callout"><b>Paso ${k + 1} de ${b.steps.length}:</b> ${s.ask}</div>`; inp.value = ''; inp.placeholder = 'Resultado de este paso'; Voice.speak(`Paso ${k + 1}. ${s.ask}`); };
     const startGuide = () => { mode = 'steps'; k = 0; fails = 0; $('#ls-help').hidden = true; fb.innerHTML = ''; showStep(); };
     const done = (ok, msg) => {
@@ -551,13 +571,14 @@ const Learn = {
     chrome(true, 'academy');
     const ex = ['3 + 4 × 2', '(2 + 3)^2 − 4', '18 ÷ 3 × 2', '√16 + 3²', '3/4 + 1/2', '2x + 3 = 11', '5x − 2 = 3x + 8', '3(x + 2) = 18', 'x + y = 10; x − y = 2', '2x + 3y = 12; x − y = 1'];
     $('#main').innerHTML = `<button class="back" data-go="#/academy">← Academia</button><h1>✍️ Pizarra</h1><p class="muted">Escribe un cálculo, una ecuación con x, o un sistema de dos ecuaciones separadas por punto y coma (;). Te digo qué hacer, paso a paso.</p>
-      <section class="card"><form id="pz-f" class="row" autocomplete="off"><input type="text" id="pz-in" placeholder="Ej.: 2x + 3 = 11" value="${esc(pre)}" aria-label="Cálculo o ecuación" class="grow"><button class="btn" type="submit">Resolver</button></form>
+      <section class="card"><form id="pz-f" class="row" autocomplete="off"><input type="text" id="pz-in" placeholder="Ej.: 2x + 3 = 11" value="${esc(pre)}" aria-label="Cálculo o ecuación" class="grow"><button class="btn" type="submit">Resolver</button></form><div class="math-preview" id="pz-pv" aria-live="polite"></div>
         <div class="chips" style="margin-top:8px">${['+', '−', '×', '÷', '^', '(', ')', '√', 'x', 'y', '=', ';'].map((c) => `<button class="chip" type="button" data-k="${c}" style="min-width:46px">${c}</button>`).join('')}</div>
         <p class="muted" style="margin:10px 0 4px;font-weight:800">Ejemplos:</p><div class="chips" style="justify-content:flex-start">${ex.map((e) => `<button class="chip" type="button" data-ex="${esc(e)}">${esc(e)}</button>`).join('')}</div></section>
       <section id="pz-out"></section>`;
     const inp = $('#pz-in');
-    $$('[data-k]').forEach((c) => c.onclick = () => { inp.value += c.dataset.k; inp.focus(); });
-    $$('[data-ex]').forEach((c) => c.onclick = () => { inp.value = c.dataset.ex; solve(); });
+    MathView.preview(inp, $('#pz-pv'));
+    $$('[data-k]').forEach((c) => c.onclick = () => { inp.value += c.dataset.k; inp.dispatchEvent(new Event('input')); inp.focus(); });
+    $$('[data-ex]').forEach((c) => c.onclick = () => { inp.value = c.dataset.ex; inp.dispatchEvent(new Event('input')); solve(); });
     const solve = () => {
       const out = $('#pz-out'); let r;
       try { r = MathX.solve(inp.value); } catch (e) {

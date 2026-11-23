@@ -353,7 +353,11 @@ const Updater = {
       const b = await this.ota.download({ url, version });
       await this.ota.next({ id: b.id }); // se aplica cuando la app pasa a segundo plano o se reabre
       lsSet('axion.otaReady', version);
-      if (manual) toast(`✓ Versión ${version} lista: sal y vuelve a entrar para aplicarla`, 4000);
+      const d = document.createElement('div'); d.className = 'sheet show ok upd-offer'; d.setAttribute('role', 'dialog'); d.style.zIndex = 90;
+      d.innerHTML = `<div class="in"><div class="txt"><h3>✨ Versión ${esc(version)} lista</h3><p>Se instaló en segundo plano. Aplícala ahora o se aplicará sola cuando salgas de la app.</p></div><div class="row"><button class="btn ghost sm" data-later>Al salir</button><button class="btn ok" data-now>Aplicar ahora</button></div></div>`;
+      document.body.append(d); Mascot.say(`¡La versión ${version} está lista!`, 'wow', 3000, 'chat');
+      $('[data-later]', d).onclick = () => d.remove();
+      $('[data-now]', d).onclick = async () => { d.remove(); toast('Aplicando actualización…'); try { await this.ota.set({ id: b.id }); } catch { toast('Sal y vuelve a entrar para aplicarla'); } };
     } catch { if (manual) toast('No se pudo descargar la actualización. Intenta de nuevo.'); }
   },
   offer(rel, url) {
@@ -401,7 +405,7 @@ document.addEventListener('visibilitychange', () => { if (document.hidden) Music
 document.addEventListener('pointerdown', () => { if (S().settings.music && !Music.timer) Music.start(); }, { once: true });
 
 /* ---------- arranque ---------- */
-Store.load(); Theme.apply(); Mascot.render(); Missions.ensure(); Router.go();
+Store.load(); Theme.apply(); Mascot.render(); Missions.ensure(); MathView.watch($('#main')); Router.go();
 Voice.init(); // prepara el motor de voz nativo desde el arranque
 Updater.init().then(() => setTimeout(() => Updater.check(false, true), 2000));
 // Tuerca te saluda al abrir la app con un resumen del día
