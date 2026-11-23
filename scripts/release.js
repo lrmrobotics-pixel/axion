@@ -13,6 +13,7 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 const zlib = require('zlib');
+const crypto = require('crypto');
 
 const root = path.join(__dirname, '..');
 const RELEASE_REPO = 'lrmrobotics-pixel/axion-releases';
@@ -61,16 +62,19 @@ if (native) {
 
 // 3) zip de la app web (index.html en la raíz)
 const zipPath = path.join(outDir, `web-${version}.zip`);
-fs.writeFileSync(zipPath, makeZip(path.join(root, 'www')));
-console.log('Zip web en', zipPath);
+const zipBuf = makeZip(path.join(root, 'www'));
+fs.writeFileSync(zipPath, zipBuf);
+// el plugin de actualizaciones exige el SHA-256 del zip para aceptar la descarga
+const checksum = crypto.createHash('sha256').update(zipBuf).digest('hex');
+console.log('Zip web en', zipPath, 'sha256', checksum);
 
 // 4) publicar
-const body = `${notes}\n\nmin-native: ${nativeVersion}`;
+const body = `${notes}\n\nmin-native: ${nativeVersion}\nchecksum: ${checksum}`;
 const notesFile = path.join(outDir, `notes-${version}.md`); fs.writeFileSync(notesFile, body);
 run(`gh release create v${version} "${zipPath}" "${apkPath}" --repo ${RELEASE_REPO} --title "Lord of Engineer ${version}" --notes-file "${notesFile}"`);
 // 5) manifiesto latest.json en el repo público (la app lo lee sin el límite de la API)
 const dl = (f) => `https://github.com/${RELEASE_REPO}/releases/download/v${version}/${path.basename(f)}`;
-const manifest = { version, minNative: nativeVersion, notes, zip: dl(zipPath), apk: dl(apkPath), apkName: path.basename(apkPath) };
+const manifest = { version, minNative: nativeVersion, notes, zip: dl(zipPath), checksum, apk: dl(apkPath), apkName: path.basename(apkPath) };
 let sha = '';
 try { sha = execSync(`gh api repos/${RELEASE_REPO}/contents/latest.json --jq .sha`, { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }).trim(); } catch { sha = ''; }
 const reqFile = path.join(outDir, `manifest-${version}.json`);

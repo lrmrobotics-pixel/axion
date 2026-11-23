@@ -146,7 +146,7 @@ const Screens = {
         <div class="row"><button class="btn ghost sm" id="voice-test">▶ Probar voz</button>${Updater.isApp() ? '<button class="btn ghost sm" id="voice-install">⬇️ Más voces del sistema</button>' : ''}</div><p class="muted" id="voice-status" style="font-size:.85rem;margin:8px 0 0"></p></section>
       <section class="card"><h3>Datos y privacidad</h3><p class="muted">Todo tu progreso se guarda solo en este dispositivo. No recopilamos datos personales.</p>
         <div class="row"><button class="btn ghost sm" id="export">⬇️ Exportar progreso</button><button class="btn ghost sm" id="import">⬆️ Importar</button><button class="btn ghost sm" id="reset" style="--ci:#c2410c">🗑 Borrar todo</button></div></section>
-      <section class="card"><h3>Actualizaciones</h3><p class="muted">Versión instalada: <b>${APP_VERSION}</b>. La app revisa si hay versiones nuevas al abrirse.</p><p class="muted" style="font-size:.85rem">${Updater.isApp() ? `Actualizaciones automáticas: <b>${Updater.ota ? 'activas ✓' : 'no disponibles'}</b> · APK ${esc(Updater.native || '—')} · Voz: <b>${Voice.native ? 'nativa ✓' : 'no disponible'}</b>` : 'Versión web (navegador).'}</p><button class="btn ghost sm" id="upd">🔄 Buscar actualizaciones</button></section>
+      <section class="card"><h3>Actualizaciones</h3><p class="muted">Versión instalada: <b>${APP_VERSION}</b>. La app revisa si hay versiones nuevas al abrirse.</p><p class="muted" style="font-size:.85rem">${Updater.isApp() ? `Actualizaciones automáticas: <b>${Updater.ota ? 'activas ✓' : 'no disponibles'}</b> · APK ${esc(Updater.native || '—')}${Updater.error ? ` · último error: ${esc(Updater.error)}` : ''} · Voz: <b>${Voice.native ? 'nativa ✓' : 'no disponible'}</b>` : 'Versión web (navegador).'}</p><button class="btn ghost sm" id="upd">🔄 Buscar actualizaciones</button></section>
       <p class="center muted" style="font-size:.8rem">Lord of Engineer v${APP_VERSION} · Complemento de estudio, no reemplaza el plan oficial de tu carrera.</p>`;
     const save = () => { Store.save(); Theme.apply(); Mascot.render(); note(); };
     const note = () => { const c = contrast(S().settings.accent, Theme.isDark() ? '#1d1b2d' : '#ffffff'); $('#contrast-note').textContent = `Contraste del color con el fondo: ${c.toFixed(1)}:1 ${c >= 3 ? '✓ buena visibilidad' : '⚠ bajo: los botones usarán texto oscuro'}`; };
@@ -329,7 +329,7 @@ const Updater = {
       let rel = null;
       try {
         const m = await fetch(`https://raw.githubusercontent.com/${UPDATE_REPO}/main/latest.json?t=${Date.now()}`, { cache: 'no-store' });
-        if (m.ok) { const j = await m.json(); rel = { tag_name: 'v' + j.version, body: `${j.notes || ''}\n\nmin-native: ${j.minNative}`, assets: [j.zip && { name: `web-${j.version}.zip`, browser_download_url: j.zip }, j.apk && { name: j.apkName || 'app.apk', browser_download_url: j.apk }].filter(Boolean) }; }
+        if (m.ok) { const j = await m.json(); rel = { tag_name: 'v' + j.version, body: `${j.notes || ''}\n\nmin-native: ${j.minNative}\nchecksum: ${j.checksum || ''}`, assets: [j.zip && { name: `web-${j.version}.zip`, browser_download_url: j.zip }, j.apk && { name: j.apkName || 'app.apk', browser_download_url: j.apk }].filter(Boolean) }; }
       } catch { rel = null; }
       if (!rel) {
         const r = await fetch(`https://api.github.com/repos/${UPDATE_REPO}/releases/latest`, { headers: { Accept: 'application/vnd.github+json' } });
@@ -342,15 +342,17 @@ const Updater = {
       const minNative = ((rel.body || '').match(/min-native:\s*(\d+\.\d+\.\d+)/) || [, tag])[1];
       const zip = (rel.assets || []).find((x) => /^web-.*\.zip$/.test(x.name));
       const apk = (rel.assets || []).find((x) => x.name.endsWith('.apk'));
-      if (this.ota && zip && !this.newer(minNative, this.native)) return this.downloadOTA(tag, zip.browser_download_url, manual);
+      const checksum = ((rel.body || '').match(/checksum:\s*([a-f0-9]{64})/i) || [])[1] || '';
+      if (this.ota && zip && checksum && !this.newer(minNative, this.native)) return this.downloadOTA(tag, zip.browser_download_url, manual, checksum);
       if (apk) this.offer(rel, apk.browser_download_url);
     } catch { if (manual) toast('No pude buscar actualizaciones. ¿Tienes internet?'); }
   },
-  async downloadOTA(version, url, manual) {
+  async downloadOTA(version, url, manual, checksum) {
     if (lsGet('axion.otaReady') === version) { if (manual) toast(`La versión ${version} ya está lista: sal y vuelve a entrar para aplicarla`); return; }
     if (manual) toast(`Descargando la versión ${version}…`);
     try {
-      const b = await this.ota.download({ url, version });
+      // el plugin exige el SHA-256 del zip; si la descarga se cuelga, se corta a los 2 minutos para informar
+      const b = await Promise.race([this.ota.download({ url, version, checksum }), new Promise((_, rej) => setTimeout(() => rej(new Error('tiempo de espera agotado')), 120e3))]);
       await this.ota.next({ id: b.id }); // se aplica cuando la app pasa a segundo plano o se reabre
       lsSet('axion.otaReady', version);
       const d = document.createElement('div'); d.className = 'sheet show ok upd-offer'; d.setAttribute('role', 'dialog'); d.style.zIndex = 90;
@@ -358,7 +360,7 @@ const Updater = {
       document.body.append(d); Mascot.say(`¡La versión ${version} está lista!`, 'wow', 3000, 'chat');
       $('[data-later]', d).onclick = () => d.remove();
       $('[data-now]', d).onclick = async () => { d.remove(); toast('Aplicando actualización…'); try { await this.ota.set({ id: b.id }); } catch { toast('Sal y vuelve a entrar para aplicarla'); } };
-    } catch { if (manual) toast('No se pudo descargar la actualización. Intenta de nuevo.'); }
+    } catch (e) { this.error = String((e && e.message) || e); if (manual) toast(`No se pudo descargar la actualización: ${this.error}`, 6000); }
   },
   offer(rel, url) {
     const d = document.createElement('div'); d.className = 'sheet show ok upd-offer'; d.setAttribute('role', 'dialog'); d.style.zIndex = 90;
