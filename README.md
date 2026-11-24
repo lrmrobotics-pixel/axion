@@ -55,3 +55,7 @@ El APK queda en `android/app/build/outputs/apk/debug/app-debug.apk`.
 - `android/`: proyecto Capacitor.
 
 > Lord of Engineer es un complemento de estudio; no reemplaza el plan oficial de tu carrera.
+
+## Licencia
+
+Código abierto bajo licencia [MIT](LICENSE). ¡Las contribuciones son bienvenidas!
